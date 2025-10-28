@@ -1,21 +1,25 @@
-import { Footer } from '@/components/Footer';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ScrollToTop } from '@/components/ScrollToTop';
 import { Navbar } from '@/components/Navbar';
-import { Hero } from '@/components/Hero';
-import { ProductGrid } from '@/components/ProductGrid';
-import { InteractiveShowroom } from '@/components/InteractiveShowroom';
+import { Footer } from '@/components/Footer';
+import Index from '@/pages/Index';
+import ClassicCatalogPage from '@/pages/classicCatalogPage';
+import InteractiveCatalogPage from '@/pages/interactiveCatalogPage';
 
-function App() {
-	return (
-		<>
-			<div className='min-h-screen'>
-				<Navbar />
-				<Hero />
-				<ProductGrid />
-				<InteractiveShowroom />
-				<Footer />
-			</div>
-		</>
-	);
-}
+const App = () => (
+	<BrowserRouter>
+		<Navbar />
+		<ScrollToTop />
+		<Routes>
+			<Route path='/' element={<Index />} />
+			<Route path='/catalogo-clasico' element={<ClassicCatalogPage />} />
+			<Route
+				path='/catalogo-interactivo'
+				element={<InteractiveCatalogPage />}
+			/>
+		</Routes>
+		<Footer />
+	</BrowserRouter>
+);
 
 export default App;

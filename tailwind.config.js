@@ -1,22 +1,13 @@
 /** @type {import('tailwindcss').Config} */
+
 export default {
-	// --- INICIO: Contenido copiado y adaptado de Lovable ---
 
-	// 1. Configuración de Dark Mode
 	darkMode: ["class"],
-
-	// 2. Rutas de Contenido (MUY IMPORTANTE)
-	// Nota: Lovable tenía './pages', './components', './app'.
-	// Se añade el alias '@' que definiste en vite.config.ts.
 	content: [
-		"./index.html", // Necesario para Vite
-		"./src/**/*.{js,jsx,ts,tsx}", // Usa el alias '@/...'
+		"./index.html",
+		"./src/**/*.{js,jsx,ts,tsx}",
 	],
-
-	// 3. Prefijo (Necesario para Shadcn/UI)
 	prefix: "",
-
-	// 4. Tema (Customizaciones de Colores, Fuentes, y Diseño)
 	theme: {
 		container: {
 			center: true,
@@ -27,24 +18,11 @@ export default {
 		},
 
 		fontFamily: {
-			sans: [
-				'Inter',
-				'sans-serif'
-			]
+			'serif-display': ['DM Serif Display', 'serif'],
+			'sans-romero': ['DM Sans', 'sans-serif'],
 		},
 
 		extend: {
-			fontFamily: {
-
-				// 1. Fuente para Titulares/Logotipo: "Muebles Romero" (DM Serif Display)
-				// La utilidad será: font-serif-display
-				'serif-display': ['DM Serif Display', 'serif'],
-
-				// 2. Fuente para Cuerpo de Texto: descripciones, párrafos (DM Sans)
-				// La utilidad será: font-sans-romero
-				'sans-romero': ['DM Sans', 'sans-serif'],
-			},
-
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -128,7 +106,5 @@ export default {
 		}
 	},
 
-	// 5. Plugins (requiere la instalación de 'tailwindcss-animate')
 	plugins: [require("tailwindcss-animate")],
-	// --- FIN: Contenido copiado y adaptado de Lovable ---
 };

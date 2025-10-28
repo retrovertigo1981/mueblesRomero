@@ -1,80 +1,108 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-import sofaImg from '@/assets/product-sofa.jpg';
-import tableImg from '@/assets/product-table.jpg';
-import chairImg from '@/assets/product-chair.jpg';
-import deskImg from '@/assets/product-desk.jpg';
-import shelfImg from '@/assets/product-shelf.jpg';
-import armchairImg from '@/assets/product-armchair.jpg';
+import { useState, useEffect } from 'react';
 
-interface Product {
+interface ProductApi {
 	id: number;
-	name: string;
-	price: string;
-	image: string;
-	category: string;
+	title: {
+		rendered: string;
+	};
+	acf: {
+		price: string;
+		category: string;
+		image: string;
+	};
 }
 
-const products: Product[] = [
-	{
-		id: 1,
-		name: 'Sofá Moderno Escandinavo',
-		price: '$1,299',
-		image: sofaImg,
-		category: 'Sala',
-	},
-	{
-		id: 2,
-		name: 'Mesa de Comedor Extensible',
-		price: '$899',
-		image: tableImg,
-		category: 'Comedor',
-	},
-	{
-		id: 3,
-		name: 'Silla Contemporánea',
-		price: '$299',
-		image: chairImg,
-		category: 'Comedor',
-	},
-	{
-		id: 4,
-		name: 'Escritorio Minimalista',
-		price: '$599',
-		image: deskImg,
-		category: 'Oficina',
-	},
-	{
-		id: 5,
-		name: 'Estantería de Pared',
-		price: '$449',
-		image: shelfImg,
-		category: 'Almacenamiento',
-	},
-	{
-		id: 6,
-		name: 'Sillón Relax',
-		price: '$799',
-		image: armchairImg,
-		category: 'Sala',
-	},
-];
+interface CleanProduct {
+	id: number;
+	title: string;
+	price: string;
+	category: string;
+	image: string;
+}
+
+const cleanDataProducts = (dataApi: ProductApi[]): CleanProduct[] => {
+	return dataApi.map((item) => ({
+		id: item.id,
+		title: item.title.rendered,
+		price: item.acf.price,
+		category: item.acf.category,
+		image: item.acf.image,
+	}));
+};
 
 export const ProductGrid = () => {
+	const [products, setProducts] = useState<CleanProduct[]>([]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+	const [loading, setLoading] = useState<boolean>(true);
+	const [error, setError] = useState<string | null>(null);
 	const categories = ['Todos', 'Sala', 'Comedor', 'Oficina', 'Almacenamiento'];
+
+	useEffect(() => {
+		const fetchProducts = async () => {
+			try {
+				setLoading(true);
+				const response = await fetch(
+					'http://localhost:8881/wp-json/wp/v2/productos'
+				);
+				if (!response.ok) {
+					throw new Error(`Error al obtener los productos: ${response.status}`);
+				}
+				const rawData: ProductApi[] = await response.json();
+				const cleanData = cleanDataProducts(rawData);
+				setProducts(cleanData);
+			} catch (err) {
+				if (err instanceof Error) {
+					setError('Error al cargar los productos.');
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchProducts();
+	}, []);
 
 	const filteredProducts =
 		selectedCategory === 'Todos'
 			? products
 			: products.filter((p) => p.category === selectedCategory);
 
+	if (loading) {
+		return (
+			<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
+				<div className='container mx-auto min-h-screen flex items-center justify-center'>
+					<div className='text-center'>
+						<div className='animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4'></div>
+						<p className='text-2xl font-semibold text-foreground'>
+							Cargando productos...
+						</p>
+					</div>
+				</div>
+			</section>
+		);
+	}
+
+	if (error) {
+		return (
+			<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
+				<div className='container mx-auto min-h-screen flex items-center justify-center'>
+					<div className='text-center'>
+						<p className='text-2xl font-semibold text-destructive mb-4'>
+							{error}
+						</p>
+						<Button onClick={() => window.location.reload()}>Reintentar</Button>
+					</div>
+				</div>
+			</section>
+		);
+	}
+
 	return (
 		<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
-			<div className='container mx-auto'>
+			<div className='container mx-auto min-h-screen'>
 				<div className='text-center mb-12'>
-					<h2 className='text-4xl font-bold mb-4 text-foreground'>
+					<h2 className='text-4xl font-bold mb-4 text-foreground mt-8'>
 						Catálogo Clásico
 					</h2>
 					<p className='text-muted-foreground text-lg max-w-2xl mx-auto'>
@@ -105,7 +133,7 @@ export const ProductGrid = () => {
 								<div className='aspect-square bg-muted overflow-hidden'>
 									<img
 										src={product.image}
-										alt={product.name}
+										alt={product.title}
 										className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
 									/>
 								</div>
@@ -116,7 +144,7 @@ export const ProductGrid = () => {
 										{product.category}
 									</span>
 									<h3 className='text-lg font-semibold text-foreground mt-1'>
-										{product.name}
+										{product.title}
 									</h3>
 									<p className='text-2xl font-bold text-primary mt-2'>
 										{product.price}
