@@ -2,12 +2,15 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Phone } from 'lucide-react';
 import heroImage from '@/assets/hero-furniture.jpg';
+import { useNavigate } from 'react-router-dom';
 
 export const Hero = () => {
 	const scrollToSection = (id: string) => {
 		const element = document.getElementById(id);
 		element?.scrollIntoView({ behavior: 'smooth' });
 	};
+
+	const navigate = useNavigate();
 
 	return (
 		<section className='relative h-screen sm:h-auto sm:pt-28 sm:pb-24 md:pt-36 md:pb-32 lg:pt-56 lg:pb-56 px-4 overflow-hidden'>
@@ -46,7 +49,7 @@ export const Hero = () => {
 						size='lg'
 						variant='outline'
 						className='bg-background/50 backdrop-blur-sm hover:bg-background/70 font-sans-romero w-full sm:w-auto text-base py-6 sm:py-3'
-						onClick={() => scrollToSection('catalogo-interactivo')}
+						onClick={() => navigate('/contacto')}
 					>
 						Contáctanos
 						<Phone className='w-4 h-4' />

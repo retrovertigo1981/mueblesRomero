@@ -2,12 +2,16 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { Toaster } from '@/components/ui/sonner';
 import Index from '@/pages/Index';
 import ClassicCatalogPage from '@/pages/classicCatalogPage';
 import InteractiveCatalogPage from '@/pages/interactiveCatalogPage';
+import ContactPage from '@/pages/contactPage';
+import NotFound from './pages/NotFoundPage';
 
 const App = () => (
 	<BrowserRouter>
+		<Toaster />
 		<Navbar />
 		<ScrollToTop />
 		<Routes>
@@ -17,6 +21,8 @@ const App = () => (
 				path='/catalogo-interactivo'
 				element={<InteractiveCatalogPage />}
 			/>
+			<Route path='/contacto' element={<ContactPage />} />
+			<Route path='*' element={<NotFound />} />
 		</Routes>
 		<Footer />
 	</BrowserRouter>
