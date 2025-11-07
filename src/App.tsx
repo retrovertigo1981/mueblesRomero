@@ -7,6 +7,7 @@ import Index from '@/pages/Index';
 import ClassicCatalogPage from '@/pages/classicCatalogPage';
 import InteractiveCatalogPage from '@/pages/interactiveCatalogPage';
 import ContactPage from '@/pages/contactPage';
+import DetailProductPage from '@/pages/DetailProductPage';
 import NotFound from './pages/NotFoundPage';
 
 const App = () => (
@@ -22,6 +23,7 @@ const App = () => (
 				element={<InteractiveCatalogPage />}
 			/>
 			<Route path='/contacto' element={<ContactPage />} />
+			<Route path='/producto/:id' element={<DetailProductPage />} />
 			<Route path='*' element={<NotFound />} />
 		</Routes>
 		<Footer />

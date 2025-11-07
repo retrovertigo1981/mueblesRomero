@@ -1,278 +1,318 @@
 import { useState, useEffect } from 'react';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-/**
- * Ejemplo simplificado: reemplaza productsMock por tu fetch desde WP.
- * Reemplaza el <select> por el componente shadcn Combobox/Select cuando quieras.
- */
-
-type Variant = {
-	colorSlug: string;
-	colorName: string;
-	swatch?: string; // puede ser un hex o url pequeño
+// Interfaces (ajustadas para combinaciones)
+interface Variant {
+	mesaColor: string;
+	sillaColor: string;
 	imageUrl: string;
-};
+}
 
-type Product = {
-	id: string;
+interface ProductApi {
+	id: number;
+	title: { rendered: string };
+	acf: {
+		category: string;
+		thumbnail: string; // ACF para thumb
+		variants: Variant[]; // Asumir ACF array de variants
+	};
+}
+
+interface CleanProduct {
+	id: number;
 	title: string;
 	thumbnail: string;
 	variants: Variant[];
-};
+}
 
-const productsMock: Product[] = [
+// Mocks temporales (reemplaza con WP fetch)
+const productsMock: CleanProduct[] = [
 	{
-		id: 'mesa-01',
-		title: 'Mesa Aurora',
-		thumbnail: '/images/mesa-aurora/thumb.jpg',
+		id: 1,
+		title: 'Comedor Aurora',
+		thumbnail: '/images/comedor-aurora/thumb.jpg',
 		variants: [
 			{
-				colorSlug: 'roble',
-				colorName: 'Roble',
-				swatch: '#8B4513',
-				imageUrl: '/images/mesa-aurora/aurora_roble.jpg',
+				mesaColor: 'roble',
+				sillaColor: 'beige',
+				imageUrl: '/images/comedor-aurora/roble-beige.jpg',
 			},
 			{
-				colorSlug: 'cerezo',
-				colorName: 'Cerezo',
-				swatch: '#CD5C5C',
-				imageUrl: '/images/mesa-aurora/aurora_cerezo.jpg',
+				mesaColor: 'roble',
+				sillaColor: 'gris',
+				imageUrl: '/images/comedor-aurora/roble-gris.jpg',
+			},
+			{
+				mesaColor: 'cerezo',
+				sillaColor: 'beige',
+				imageUrl: '/images/comedor-aurora/cerezo-beige.jpg',
+			},
+			{
+				mesaColor: 'cerezo',
+				sillaColor: 'gris',
+				imageUrl: '/images/comedor-aurora/cerezo-gris.jpg',
 			},
 		],
 	},
 	{
-		id: 'comedor-01',
-		title: 'Comedor Nórdico',
-		thumbnail: '/images/comedor-nordico/thumb.jpg',
+		id: 2,
+		title: 'Mesa Nórdica',
+		thumbnail: '/images/mesa-nordica/thumb.jpg',
 		variants: [
 			{
-				colorSlug: 'blanco',
-				colorName: 'Blanco',
-				swatch: '#F5F5F5',
-				imageUrl: '/images/comedor-nordico/nordico_blanco.jpg',
+				mesaColor: 'blanco',
+				sillaColor: 'negro',
+				imageUrl: '/images/mesa-nordica/blanco-negro.jpg',
 			},
 			{
-				colorSlug: 'nogal',
-				colorName: 'Nogal',
-				swatch: '#654321',
-				imageUrl: '/images/comedor-nordico/nordico_nogal.jpg',
+				mesaColor: 'blanco',
+				sillaColor: 'madera',
+				imageUrl: '/images/mesa-nordica/blanco-madera.jpg',
+			},
+			{
+				mesaColor: 'nogal',
+				sillaColor: 'negro',
+				imageUrl: '/images/mesa-nordica/nogal-negro.jpg',
+			},
+			{
+				mesaColor: 'nogal',
+				sillaColor: 'madera',
+				imageUrl: '/images/mesa-nordica/nogal-madera.jpg',
 			},
 		],
 	},
+	// Agrega más...
 ];
 
+const cleanDataProducts = (dataApi: ProductApi[]): CleanProduct[] => {
+	return dataApi
+		.filter((item) => item.acf.category === 'Personalizable') // Filtra solo personalizables
+		.map((item) => ({
+			id: item.id,
+			title: item.title.rendered,
+			thumbnail: item.acf.thumbnail,
+			variants: item.acf.variants || [], // Asegura array
+		}));
+};
+
 export const InteractiveShowroom = () => {
-	const [products] = useState<Product[]>(productsMock); // en tu app, hacer fetch desde WP y normalizar
-	const [selectedProduct, setSelectedProduct] = useState<Product | null>(
+	const [products, setProducts] = useState<CleanProduct[]>(productsMock); // Cambia a [] y usa fetch
+	const [selectedProduct, setSelectedProduct] = useState<CleanProduct | null>(
 		products[0] ?? null
 	);
-	const [selectedVariant, setSelectedVariant] = useState<Variant | null>(
-		() => products[0]?.variants[0] ?? null
-	);
-
-	// crossfade state simple
+	const [selectedMesaColor, setSelectedMesaColor] = useState<string>('');
+	const [selectedSillaColor, setSelectedSillaColor] = useState<string>('');
+	const [currentImage, setCurrentImage] = useState<string>('');
 	const [isFading, setIsFading] = useState(false);
-	const [imageKey, setImageKey] = useState(0);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
+	// Fetch real de WP (descomenta y quita mocks)
 	useEffect(() => {
-		// When product changes, set default variant
-		if (selectedProduct) {
-			setSelectedVariant(selectedProduct.variants[0] ?? null);
+		const fetchProducts = async () => {
+			try {
+				setLoading(true);
+				const response = await fetch(
+					'http://localhost:8881/wp-json/wp/v2/productos'
+				); // Cambia URL en prod
+				if (!response.ok) throw new Error('Error fetching products');
+				const rawData: ProductApi[] = await response.json();
+				const cleanData = cleanDataProducts(rawData);
+				setProducts(cleanData);
+				if (cleanData.length > 0) setSelectedProduct(cleanData[0]);
+			} catch (err) {
+				if (err instanceof Error) {
+					setError('Error al cargar los muebles personalizables.');
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchProducts(); // Descomenta para real
+	}, []);
+
+	// Actualiza colores defaults y imagen al cambiar producto
+	useEffect(() => {
+		if (selectedProduct && selectedProduct.variants.length > 0) {
+			const defaultVariant = selectedProduct.variants[0];
+			setSelectedMesaColor(defaultVariant.mesaColor);
+			setSelectedSillaColor(defaultVariant.sillaColor);
+			setCurrentImage(defaultVariant.imageUrl);
 		}
 	}, [selectedProduct]);
 
-	const onSelectVariant = (variantSlug: string) => {
-		if (!selectedProduct) return;
-		const v = selectedProduct.variants.find((x) => x.colorSlug === variantSlug);
-		if (!v) return;
-		// Start fade
-		setIsFading(true);
-		// small timeout for animation duration
-		setTimeout(() => {
-			setSelectedVariant(v);
-			setImageKey((k) => k + 1); // change key to force img reload + animation
-			setIsFading(false);
-		}, 200); // 200ms crossfade (ajusta según taste)
+	// Actualiza imagen con fade al cambiar colores
+	useEffect(() => {
+		if (selectedProduct && selectedMesaColor && selectedSillaColor) {
+			const matchingVariant = selectedProduct.variants.find(
+				(v) =>
+					v.mesaColor === selectedMesaColor &&
+					v.sillaColor === selectedSillaColor
+			);
+			if (matchingVariant) {
+				setIsFading(true);
+				setTimeout(() => {
+					setCurrentImage(matchingVariant.imageUrl);
+					setIsFading(false);
+				}, 200); // Duración fade
+			}
+		}
+	}, [selectedMesaColor, selectedSillaColor, selectedProduct]);
+
+	// Colores únicos para selects (extraídos de variants)
+	const getUniqueMesaColors = () => {
+		if (!selectedProduct) return [];
+		return [...new Set(selectedProduct.variants.map((v) => v.mesaColor))];
 	};
+
+	const getUniqueSillaColors = () => {
+		if (!selectedProduct) return [];
+		return [...new Set(selectedProduct.variants.map((v) => v.sillaColor))];
+	};
+
+	if (loading)
+		return (
+			<div className='min-h-screen flex items-center justify-center'>
+				Cargando...
+			</div>
+		);
+	if (error)
+		return (
+			<div className='min-h-screen flex items-center justify-center text-destructive'>
+				{error}
+			</div>
+		);
 
 	return (
 		<section
 			id='catalogo-interactivo'
-			className='min-h-screen py-6 px-4 bg-background'
+			className='min-h-screen py-8 px-4 bg-background'
 		>
 			<div className='max-w-5xl mx-auto'>
 				{/* Header */}
-				<div className='text-center mb-4'>
-					<h2 className='text-2xl font-bold'>
-						Personalizador — Catálogo Interactivo
-					</h2>
-					<p className='text-sm text-muted-foreground'>
-						Selecciona un mueble y cambia entre las variantes disponibles.
+				<div className='text-center mb-6'>
+					<h2 className='text-3xl font-bold'>Catálogo Interactivo</h2>
+					<p className='text-muted-foreground'>
+						Elige un mueble y personaliza colores de mesa y silla.
 					</p>
 				</div>
 
-				{/* MOBILE: carousel de productos */}
-				<div className='md:hidden'>
-					<div className='overflow-x-auto py-2'>
-						<ul className='flex gap-3 px-1'>
-							{products.map((p) => (
-								<li key={p.id} className='min-w-[140px]'>
-									<button
-										onClick={() => setSelectedProduct(p)}
-										className={`w-full text-left rounded-lg p-2 border transition-shadow ${
-											selectedProduct?.id === p.id
-												? 'ring-2 ring-primary'
-												: 'border-border bg-card'
-										}`}
-									>
-										<img
-											src={p.thumbnail}
-											alt={p.title}
-											className='w-full h-24 object-cover rounded-md mb-2'
-										/>
-										<div className='text-xs font-medium'>{p.title}</div>
-									</button>
-								</li>
-							))}
-						</ul>
-					</div>
-
-					{/* Preview */}
-					<div className='mt-4'>
-						<div className='aspect-[4/3] rounded-xl overflow-hidden shadow-soft relative'>
-							{/* Imagen principal con crossfade */}
-							<img
-								key={imageKey} // cambiar key fuerza la transición natural de navegador para reemplazo
-								src={selectedVariant?.imageUrl}
-								alt={selectedProduct?.title}
-								className={`w-full h-full object-cover transition-opacity duration-300 ${
-									isFading ? 'opacity-40 scale-95' : 'opacity-100 scale-100'
+				{/* Mobile: Lista horizontal de muebles */}
+				<div className='md:hidden overflow-x-auto py-4 mb-6'>
+					<div className='flex gap-4'>
+						{products.map((p) => (
+							<Card
+								key={p.id}
+								onClick={() => setSelectedProduct(p)}
+								className={`cursor-pointer min-w-[150px] transition-shadow ${
+									selectedProduct?.id === p.id ? 'ring-2 ring-primary' : ''
 								}`}
-								loading='lazy'
-							/>
-						</div>
-
-						{/* Compact color selector (mobile) */}
-						<div className='mt-3'>
-							<label className='text-xs font-medium mb-1 block'>
-								Variantes
-							</label>
-
-							{/* Native select — reemplaza por shadcn Select/Combobox */}
-							<div className='relative'>
-								<select
-									value={selectedVariant?.colorSlug}
-									onChange={(e) => onSelectVariant(e.target.value)}
-									className='w-full rounded-lg border h-10 px-3 appearance-none'
-								>
-									{selectedProduct?.variants.map((v) => (
-										<option key={v.colorSlug} value={v.colorSlug}>
-											{v.colorName}
-										</option>
-									))}
-								</select>
-
-								{/* swatch a la derecha (puedes integrarlo en opciones del combobox shadcn) */}
-								<div className='absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none'>
-									<div
-										className='w-5 h-5 rounded-full border'
-										style={{ background: selectedVariant?.swatch ?? '#ccc' }}
+							>
+								<CardContent className='p-2'>
+									<img
+										src={p.thumbnail}
+										alt={p.title}
+										className='w-full h-32 object-cover rounded-md mb-2'
 									/>
-								</div>
-							</div>
-						</div>
+									<p className='text-sm font-medium text-center'>{p.title}</p>
+								</CardContent>
+							</Card>
+						))}
 					</div>
 				</div>
 
-				{/* DESKTOP: grid con preview y panel derecho */}
-				<div className='hidden md:grid md:grid-cols-2 gap-8 mt-6'>
-					<div>
-						<div className='aspect-[4/3] rounded-xl overflow-hidden shadow-soft sticky top-8'>
+				{/* Layout Principal: Mobile stacked, Desktop grid */}
+				<div className='grid md:grid-cols-[1fr_3fr_1fr] gap-6'>
+					{/* Desktop: Lista vertical de muebles */}
+					<div className='hidden md:block'>
+						<h3 className='text-lg font-semibold mb-4'>Muebles Disponibles</h3>
+						<div className='space-y-4'>
+							{products.map((p) => (
+								<Card
+									key={p.id}
+									onClick={() => setSelectedProduct(p)}
+									className={`cursor-pointer transition-shadow ${
+										selectedProduct?.id === p.id ? 'ring-2 ring-primary' : ''
+									}`}
+								>
+									<CardContent className='p-4 flex items-center gap-4'>
+										<img
+											src={p.thumbnail}
+											alt={p.title}
+											className='w-16 h-16 object-cover rounded'
+										/>
+										<p className='font-medium'>{p.title}</p>
+									</CardContent>
+								</Card>
+							))}
+						</div>
+					</div>
+
+					{/* Preview Imagen */}
+					<div className='col-span-1 md:col-span-1'>
+						<div className='aspect-[4/3] rounded-xl overflow-hidden shadow-soft relative'>
 							<img
-								key={imageKey}
-								src={selectedVariant?.imageUrl}
-								alt={selectedProduct?.title}
+								src={currentImage}
+								alt={`${selectedProduct?.title} - ${selectedMesaColor}/${selectedSillaColor}`}
 								className={`w-full h-full object-cover transition-opacity duration-300 ${
-									isFading ? 'opacity-40' : 'opacity-100'
+									isFading ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
 								}`}
 								loading='lazy'
 							/>
 						</div>
 					</div>
 
-					<div className='space-y-4'>
-						<div className='flex items-center justify-between'>
-							<div>
-								<h3 className='text-lg font-semibold'>
-									{selectedProduct?.title}
-								</h3>
-								<p className='text-sm text-muted-foreground'>
-									Elige la variante que prefieras
-								</p>
-							</div>
-						</div>
-
-						{/* Color selector (desktop) */}
+					{/* Controls: Selects para colores */}
+					<div className='space-y-6'>
 						<div>
-							<label className='text-sm font-medium mb-2 block'>
-								Variantes
+							<label className='block text-sm font-medium mb-2'>
+								Color de Mesa
 							</label>
-							<div className='grid grid-cols-3 gap-3'>
-								{selectedProduct?.variants.map((v) => (
-									<button
-										key={v.colorSlug}
-										onClick={() => onSelectVariant(v.colorSlug)}
-										className={`flex items-center gap-2 p-2 rounded-lg border transition-transform hover:scale-105 ${
-											selectedVariant?.colorSlug === v.colorSlug
-												? 'ring-2 ring-primary'
-												: 'bg-card'
-										}`}
-									>
-										<div
-											className='w-8 h-8 rounded-sm border'
-											style={{ background: v.swatch ?? '#eee' }}
-										/>
-										<div className='text-sm'>{v.colorName}</div>
-									</button>
-								))}
-							</div>
-							{/* Si quieres minificar aún más: sustituir el grid por un Select/Combobox shadcn */}
+							<Select
+								value={selectedMesaColor}
+								onValueChange={setSelectedMesaColor}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder='Elige color' />
+								</SelectTrigger>
+								<SelectContent>
+									{getUniqueMesaColors().map((color) => (
+										<SelectItem key={color} value={color}>
+											{color.charAt(0).toUpperCase() + color.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-
-						<div className='border-t border-border my-4' />
-
-						{/* Lista de productos completa */}
 						<div>
-							<label className='text-sm font-medium mb-2 block'>
-								Otros muebles
+							<label className='block text-sm font-medium mb-2'>
+								Color de Silla
 							</label>
-							<ul className='grid grid-cols-1 gap-3'>
-								{products.map((p) => (
-									<li key={p.id}>
-										<button
-											onClick={() => setSelectedProduct(p)}
-											className={`flex items-center gap-3 w-full p-2 rounded-lg border ${
-												selectedProduct?.id === p.id
-													? 'ring-2 ring-primary'
-													: 'bg-card'
-											}`}
-										>
-											<img
-												src={p.thumbnail}
-												alt={p.title}
-												className='w-16 h-12 object-cover rounded'
-											/>
-											<div className='text-sm'>{p.title}</div>
-										</button>
-									</li>
-								))}
-							</ul>
+							<Select
+								value={selectedSillaColor}
+								onValueChange={setSelectedSillaColor}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder='Elige color' />
+								</SelectTrigger>
+								<SelectContent>
+									{getUniqueSillaColors().map((color) => (
+										<SelectItem key={color} value={color}>
+											{color.charAt(0).toUpperCase() + color.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-
-						<div className='mt-4'>
-							<button className='btn btn-primary w-full'>
-								Añadir al carrito
-							</button>
-						</div>
+						<Button className='w-full'>Añadir al Carrito</Button>
 					</div>
 				</div>
 			</div>

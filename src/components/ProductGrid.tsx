@@ -1,6 +1,7 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductApi {
 	id: number;
@@ -38,6 +39,7 @@ export const ProductGrid = () => {
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 	const categories = ['Todos', 'Sala', 'Comedor', 'Oficina', 'Almacenamiento'];
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		const fetchProducts = async () => {
@@ -102,7 +104,7 @@ export const ProductGrid = () => {
 		<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
 			<div className='container mx-auto min-h-screen'>
 				<div className='text-center mb-12'>
-					<h2 className='text-4xl font-bold mb-4 text-foreground mt-8'>
+					<h2 className='text-4xl font-serif-display font-bold mb-4 text-foreground mt-8'>
 						Catálogo Clásico
 					</h2>
 					<p className='text-muted-foreground text-lg max-w-2xl mx-auto'>
@@ -150,7 +152,10 @@ export const ProductGrid = () => {
 										{product.price}
 									</p>
 								</div>
-								<Button className='w-full shadow-soft hover:shadow-hover transition-all'>
+								<Button
+									className='w-full shadow-soft hover:shadow-hover transition-all'
+									onClick={() => navigate(`/producto/${product.id}`)}
+								>
 									Ver Detalles
 								</Button>
 							</CardFooter>
