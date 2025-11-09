@@ -1,104 +1,23 @@
+import type { CleanProduct } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-interface ProductApi {
-	id: number;
-	title: {
-		rendered: string;
-	};
-	acf: {
-		price: string;
-		category: string;
-		image: string;
-	};
+interface ProductGridProps {
+	products: CleanProduct[];
 }
 
-interface CleanProduct {
-	id: number;
-	title: string;
-	price: string;
-	category: string;
-	image: string;
-}
-
-const cleanDataProducts = (dataApi: ProductApi[]): CleanProduct[] => {
-	return dataApi.map((item) => ({
-		id: item.id,
-		title: item.title.rendered,
-		price: item.acf.price,
-		category: item.acf.category,
-		image: item.acf.image,
-	}));
-};
-
-export const ProductGrid = () => {
-	const [products, setProducts] = useState<CleanProduct[]>([]);
+export const ProductGrid = ({ products }: ProductGridProps) => {
+	// const [products, setProducts] = useState<CleanProduct[]>([]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
-	const [loading, setLoading] = useState<boolean>(true);
-	const [error, setError] = useState<string | null>(null);
 	const categories = ['Todos', 'Sala', 'Comedor', 'Oficina', 'Almacenamiento'];
 	const navigate = useNavigate();
-
-	useEffect(() => {
-		const fetchProducts = async () => {
-			try {
-				setLoading(true);
-				const response = await fetch(
-					'http://localhost:8881/wp-json/wp/v2/productos'
-				);
-				if (!response.ok) {
-					throw new Error(`Error al obtener los productos: ${response.status}`);
-				}
-				const rawData: ProductApi[] = await response.json();
-				const cleanData = cleanDataProducts(rawData);
-				setProducts(cleanData);
-			} catch (err) {
-				if (err instanceof Error) {
-					setError('Error al cargar los productos.');
-				}
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchProducts();
-	}, []);
 
 	const filteredProducts =
 		selectedCategory === 'Todos'
 			? products
 			: products.filter((p) => p.category === selectedCategory);
-
-	if (loading) {
-		return (
-			<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
-				<div className='container mx-auto min-h-screen flex items-center justify-center'>
-					<div className='text-center'>
-						<div className='animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4'></div>
-						<p className='text-2xl font-semibold text-foreground'>
-							Cargando productos...
-						</p>
-					</div>
-				</div>
-			</section>
-		);
-	}
-
-	if (error) {
-		return (
-			<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
-				<div className='container mx-auto min-h-screen flex items-center justify-center'>
-					<div className='text-center'>
-						<p className='text-2xl font-semibold text-destructive mb-4'>
-							{error}
-						</p>
-						<Button onClick={() => window.location.reload()}>Reintentar</Button>
-					</div>
-				</div>
-			</section>
-		);
-	}
 
 	return (
 		<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
