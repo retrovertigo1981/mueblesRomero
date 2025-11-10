@@ -1,100 +1,16 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShoppingCart, Ruler, Package, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import type { CleanProductDetail } from '@/types';
 
-interface testApi {
-	id: number;
-	title: {
-		rendered: string;
-	};
-	acf: {
-		price: string;
-		category: string;
-		description: string;
-		dimensions: string;
-		material: string;
-		color: string;
-		warranty: string;
-		image: string;
-	};
+interface ProductDetailProps {
+	product: CleanProductDetail | null;
 }
 
-interface ProductDetailClear {
-	id: number;
-	title: string;
-	price: string;
-	category: string;
-	description: string;
-	dimensions: string;
-	material: string;
-	color: string;
-	warranty: string;
-	image: string;
-}
-
-export const ProductDetail = () => {
-	const { id } = useParams();
+export const ProductDetail = ({ product }: ProductDetailProps) => {
 	const navigate = useNavigate();
-	const [product, setProduct] = useState<ProductDetailClear | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchProduct = async () => {
-			setIsLoading(true);
-
-			try {
-				const response = await fetch(
-					`http://localhost:8881/wp-json/wp/v2/productos/${id}`
-				);
-
-				if (!response.ok) {
-					throw new Error('Error al cargar el producto');
-				}
-				const rawData: testApi = await response.json();
-				const cleanProduct: ProductDetailClear = {
-					id: rawData.id,
-					title: rawData.title.rendered,
-					price: rawData.acf.price,
-					category: rawData.acf.category,
-					description: rawData.acf.description,
-					dimensions: rawData.acf.dimensions,
-					material: rawData.acf.material,
-					color: rawData.acf.color,
-					warranty: rawData.acf.warranty,
-					image: rawData.acf.image,
-				};
-				setProduct(cleanProduct);
-			} catch (error) {
-				console.error('Error fetching product:', error);
-				toast.error(
-					'No se pudo cargar el producto. Por favor intenta de nuevo.'
-				);
-				setProduct(null);
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		fetchProduct();
-	}, [id]);
-
-	if (isLoading) {
-		return (
-			<div className='min-h-screen'>
-				<div className='container mx-auto px-4 py-20 text-center'>
-					<div className='animate-pulse space-y-4'>
-						<div className='h-8 bg-muted rounded w-1/4 mx-auto'></div>
-						<div className='h-4 bg-muted rounded w-1/2 mx-auto'></div>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
 	if (!product) {
 		return (
 			<div className='min-h-screen'>

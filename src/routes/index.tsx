@@ -1,8 +1,9 @@
 import type { RouteObject, LoaderFunctionArgs } from 'react-router-dom';
 import type React from 'react';
+import { Layout } from '@/components/Layout';
 import Index from '@/pages/Index';
 import ClassicCatalogPage from '@/pages/ClassicCatalogPage';
-// import InteractiveCatalogPage from '@/pages/InteractiveCatalogPage';
+import InteractiveCatalogPage from '@/pages/InteractiveCatalogPage';
 import DetailProductPage from '@/pages/DetailProductPage';
 import ContactPage from '@/pages/ContactPage';
 import NotFound from '@/pages/NotFoundPage';
@@ -15,9 +16,10 @@ import type {
 import { cleanDataProducts, cleanDataSingleProduct } from '@/types';
 
 type AppRoute = RouteObject & {
-	path: string;
+	path?: string;
 	element: React.ReactNode;
 	loader?: (args: LoaderFunctionArgs) => Promise<unknown>;
+	children?: AppRoute[];
 };
 
 const fetchProducts: () => Promise<CleanProduct[]> = async () => {
@@ -45,48 +47,59 @@ const fetchProductById: (id: string) => Promise<CleanProductDetail> = async (
 export const appRoutes: AppRoute[] = [
 	{
 		path: '/',
-		element: <Index />,
-	},
-	{
-		path: '/catalogo-clasico',
-		element: <ClassicCatalogPage />,
-		loader: async () => {
-			// Loader: Fetch data antes de render. Retorna data para useLoaderData()
-			try {
-				const products = await fetchProducts();
-				return { products }; // Retorna objeto (puedes agregar más data)
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new Response('Error fetching products', { status: 500 }); // Manejo error
-				}
-			}
-		},
-	},
-	{
-		path: '/producto/:id',
-		element: <DetailProductPage />,
-		loader: async (args: LoaderFunctionArgs) => {
-			const { params } = args;
-			const { id } = params;
-			if (!id) {
-				throw new Response('Producto no encontrado', { status: 404 });
-			}
-			try {
-				const product = await fetchProductById(id);
-				return { product };
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new Response('Error fetching product detail', { status: 500 });
-				}
-			}
-		},
-	},
-	{
-		path: '/contacto',
-		element: <ContactPage />,
-	},
-	{
-		path: '*',
-		element: <NotFound />,
+		element: <Layout />,
+		children: [
+			{
+				index: true,
+				element: <Index />,
+			},
+			{
+				path: 'catalogo-clasico',
+				element: <ClassicCatalogPage />,
+				loader: async () => {
+					try {
+						const products = await fetchProducts();
+						return { products };
+					} catch (error) {
+						if (error instanceof Error) {
+							throw new Response('Error fetching products', { status: 500 });
+						}
+					}
+				},
+			},
+			{
+				path: 'producto/:id',
+				element: <DetailProductPage />,
+				loader: async (args: LoaderFunctionArgs) => {
+					const { params } = args;
+					const { id } = params;
+					if (!id) {
+						throw new Response('Producto no encontrado', { status: 404 });
+					}
+					try {
+						const product = await fetchProductById(id);
+						return { product };
+					} catch (error) {
+						if (error instanceof Error) {
+							throw new Response('Error fetching product detail', {
+								status: 500,
+							});
+						}
+					}
+				},
+			},
+			{
+				path: 'catalogo-interactivo',
+				element: <InteractiveCatalogPage />,
+			},
+			{
+				path: 'contacto',
+				element: <ContactPage />,
+			},
+			{
+				path: '*',
+				element: <NotFound />,
+			},
+		],
 	},
 ];
