@@ -1,5 +1,5 @@
 import { InteractiveShowroom } from '@/components/InteractiveShowroom';
-import mascaraTela from '@/assets/mascara_sillas_rango_completo.png';
+import mascaraTela from '@/assets/mascara_sillas_rango_completo_2.png';
 
 const InteractiveCatalogPage = () => {
 	return (
@@ -9,11 +9,13 @@ const InteractiveCatalogPage = () => {
 				// maskImageUrl='https://i.imgur.com/oH39Enw.png'
 				maskImageUrl={mascaraTela}
 				woodMaskImageUrl='https://i.imgur.com/1jHvnWH.png'
-				defaultColor='#8B4513'
+				defaultColorId='beige'
 				defaultWoodColor='#8B4513'
 				width={600}
 				height={450}
-				onColorChange={(color) => console.log('Fabric Color:', color)}
+				onColorChange={(colorId, hex) =>
+					console.log('Fabric Color:', colorId, hex)
+				}
 				onWoodColorChange={(color) => console.log('Wood Color:', color)}
 			/>
 		</div>
