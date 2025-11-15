@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
@@ -8,10 +8,13 @@ import { Loader2 } from 'lucide-react';
 interface InteractiveShowroomProps {
 	baseImageUrl: string;
 	maskImageUrl: string;
+	woodMaskImageUrl: string;
 	defaultColor?: string;
+	defaultWoodColor?: string;
 	width?: number;
 	height?: number;
 	onColorChange?: (color: string) => void;
+	onWoodColorChange?: (color: string) => void;
 	className?: string;
 }
 
@@ -24,18 +27,24 @@ interface ImageAdjustments {
 export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	baseImageUrl,
 	maskImageUrl,
+	woodMaskImageUrl,
 	defaultColor = '#8B4513',
-	width = 800,
-	height = 600,
+	defaultWoodColor = '#8B4513',
+	width = 600,
+	height = 450,
 	onColorChange,
+	onWoodColorChange,
 	className = '',
 }) => {
 	const [color, setColor] = useState(defaultColor);
+	const [woodColor, setWoodColor] = useState(defaultWoodColor);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [processedMask, setProcessedMask] = useState<HTMLCanvasElement | null>(
 		null
 	);
+	const [processedWoodMask, setProcessedWoodMask] =
+		useState<HTMLCanvasElement | null>(null);
 	const [adjustments, setAdjustments] = useState<ImageAdjustments>({
 		brightness: 0,
 		contrast: 0.1,
@@ -44,6 +53,9 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 	const [baseImg, setBaseImg] = useState<HTMLImageElement | null>(null);
 	const [maskImg, setMaskImg] = useState<HTMLImageElement | null>(null);
+	const [woodImg, setWoodImg] = useState<HTMLImageElement | null>(null);
+	const timeoutRef = useRef<number | null>(null);
+	const woodTimeoutRef = useRef<number | null>(null);
 
 	// Cargar imágenes
 	useEffect(() => {
@@ -51,13 +63,20 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			try {
 				setLoading(true);
 				setError(null);
-				console.log('Starting to load images:', baseImageUrl, maskImageUrl);
+				console.log(
+					'Starting to load images:',
+					baseImageUrl,
+					maskImageUrl,
+					woodMaskImageUrl
+				);
 
 				const baseImgLoaded = await loadImage(baseImageUrl);
 				const maskImgLoaded = await loadImage(maskImageUrl);
+				const woodImgLoaded = await loadImage(woodMaskImageUrl);
 
 				setBaseImg(baseImgLoaded);
 				setMaskImg(maskImgLoaded);
+				setWoodImg(woodImgLoaded);
 				console.log('Images loaded and set in state');
 
 				setLoading(false);
@@ -69,7 +88,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		};
 
 		loadImages();
-	}, [baseImageUrl, maskImageUrl]);
+	}, [baseImageUrl, maskImageUrl, woodMaskImageUrl]);
 
 	const loadImage = (url: string): Promise<HTMLImageElement> => {
 		return new Promise((resolve, reject) => {
@@ -107,6 +126,94 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			: { r: 139, g: 69, b: 19 };
 	};
 
+	// RGB to XYZ
+	const rgbToXyz = (r: number, g: number, b: number) => {
+		r = r / 255;
+		g = g / 255;
+		b = b / 255;
+
+		r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+		g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+		b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+		r *= 100;
+		g *= 100;
+		b *= 100;
+
+		const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+		const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+		const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+
+		return { x, y, z };
+	};
+
+	// XYZ to LAB
+	const xyzToLab = (x: number, y: number, z: number) => {
+		x /= 95.047;
+		y /= 100.0;
+		z /= 108.883;
+
+		x = x > 0.008856 ? Math.pow(x, 1 / 3) : 7.787 * x + 16 / 116;
+		y = y > 0.008856 ? Math.pow(y, 1 / 3) : 7.787 * y + 16 / 116;
+		z = z > 0.008856 ? Math.pow(z, 1 / 3) : 7.787 * z + 16 / 116;
+
+		const l = 116 * y - 16;
+		const a = 500 * (x - y);
+		const b = 200 * (y - z);
+
+		return { l, a, b };
+	};
+
+	// LAB to XYZ
+	const labToXyz = (l: number, a: number, b: number) => {
+		let y = (l + 16) / 116;
+		let x = a / 500 + y;
+		let z = y - b / 200;
+
+		x = x > 0.206897 ? Math.pow(x, 3) : (x - 16 / 116) / 7.787;
+		y = y > 0.206897 ? Math.pow(y, 3) : (y - 16 / 116) / 7.787;
+		z = z > 0.206897 ? Math.pow(z, 3) : (z - 16 / 116) / 7.787;
+
+		x *= 95.047;
+		y *= 100.0;
+		z *= 108.883;
+
+		return { x, y, z };
+	};
+
+	// XYZ to RGB
+	const xyzToRgb = (x: number, y: number, z: number) => {
+		x /= 100;
+		y /= 100;
+		z /= 100;
+
+		let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+		let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+		let b = x * 0.0557 + y * -0.204 + z * 1.057;
+
+		r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+		g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+		b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+
+		r = Math.max(0, Math.min(1, r)) * 255;
+		g = Math.max(0, Math.min(1, g)) * 255;
+		b = Math.max(0, Math.min(1, b)) * 255;
+
+		return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+	};
+
+	// RGB to LAB
+	const rgbToLab = (r: number, g: number, b: number) => {
+		const xyz = rgbToXyz(r, g, b);
+		return xyzToLab(xyz.x, xyz.y, xyz.z);
+	};
+
+	// LAB to RGB
+	const labToRgb = (l: number, a: number, b: number) => {
+		const xyz = labToXyz(l, a, b);
+		return xyzToRgb(xyz.x, xyz.y, xyz.z);
+	};
+
 	// Procesar máscara con Canvas API
 	const processMask = useCallback((): HTMLCanvasElement | null => {
 		if (!maskImg) {
@@ -132,19 +239,29 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		const pixels = imageData.data;
 		const rgb = hexToRgb(color);
 
-		// Aplicar color preservando luminosidad y textura
+		// Aplicar color usando LAB space para mejor calidad
+		const targetLab = rgbToLab(rgb.r, rgb.g, rgb.b);
+
 		for (let i = 0; i < pixels.length; i += 4) {
-			const alpha = pixels[i]; // Usando canal rojo como alpha (máscara en escala de grises)
+			const alpha = pixels[i + 3]; // Usando canal alpha real para máscaras con transparencia
 
 			if (alpha > 20) {
-				// Preservar textura usando luminosidad original
-				const originalLum = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-				const lumFactor = originalLum / 255;
+				// Obtener LAB del pixel original
+				const originalLab = rgbToLab(pixels[i], pixels[i + 1], pixels[i + 2]);
 
-				// Aplicar color modulado por luminosidad
-				pixels[i] = rgb.r * lumFactor;
-				pixels[i + 1] = rgb.g * lumFactor;
-				pixels[i + 2] = rgb.b * lumFactor;
+				// Blend en LAB space: preservar luminosidad, ajustar croma
+				const blendFactor = alpha / 255;
+				const blendedA =
+					originalLab.a + (targetLab.a - originalLab.a) * blendFactor;
+				const blendedB =
+					originalLab.b + (targetLab.b - originalLab.b) * blendFactor;
+
+				// Convertir de vuelta a RGB
+				const blendedRgb = labToRgb(originalLab.l, blendedA, blendedB);
+
+				pixels[i] = blendedRgb.r;
+				pixels[i + 1] = blendedRgb.g;
+				pixels[i + 2] = blendedRgb.b;
 				pixels[i + 3] = alpha * 0.95;
 			} else {
 				pixels[i + 3] = 0;
@@ -194,17 +311,148 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		return tempCanvas;
 	}, [maskImg, color, adjustments]);
 
+	// Procesar máscara de madera
+	const processWoodMask = useCallback((): HTMLCanvasElement | null => {
+		if (!woodImg) {
+			console.log('Wood mask image not available');
+			return null;
+		}
+		console.log('Processing wood mask');
+
+		const tempCanvas = document.createElement('canvas');
+		tempCanvas.width = woodImg.width;
+		tempCanvas.height = woodImg.height;
+		const ctx = tempCanvas.getContext('2d', { willReadFrequently: true });
+		if (!ctx) return null;
+
+		ctx.drawImage(woodImg, 0, 0);
+
+		const imageData = ctx.getImageData(
+			0,
+			0,
+			tempCanvas.width,
+			tempCanvas.height
+		);
+		const pixels = imageData.data;
+		const rgb = hexToRgb(woodColor);
+
+		// Aplicar color usando LAB space para mejor calidad en madera
+		const targetLab = rgbToLab(rgb.r, rgb.g, rgb.b);
+
+		for (let i = 0; i < pixels.length; i += 4) {
+			const alpha = pixels[i + 3]; // Usando canal alpha real para máscaras con transparencia
+
+			if (alpha > 20) {
+				// Obtener LAB del pixel original
+				const originalLab = rgbToLab(pixels[i], pixels[i + 1], pixels[i + 2]);
+
+				// Para madera, blend más sutil: menos cambio en croma
+				const blendFactor = (alpha / 255) * 0.7; // Factor más bajo para madera
+				const blendedA =
+					originalLab.a + (targetLab.a - originalLab.a) * blendFactor;
+				const blendedB =
+					originalLab.b + (targetLab.b - originalLab.b) * blendFactor;
+
+				// Convertir de vuelta a RGB
+				const blendedRgb = labToRgb(originalLab.l, blendedA, blendedB);
+
+				pixels[i] = blendedRgb.r;
+				pixels[i + 1] = blendedRgb.g;
+				pixels[i + 2] = blendedRgb.b;
+				pixels[i + 3] = alpha * 0.95;
+			} else {
+				pixels[i + 3] = 0;
+			}
+		}
+
+		// Aplicar ajustes de imagen (brillo, contraste, saturación)
+		for (let i = 0; i < pixels.length; i += 4) {
+			if (pixels[i + 3] === 0) continue;
+
+			let r = pixels[i];
+			let g = pixels[i + 1];
+			let b = pixels[i + 2];
+
+			// Brillo
+			const brightnessFactor = adjustments.brightness * 255;
+			r += brightnessFactor;
+			g += brightnessFactor;
+			b += brightnessFactor;
+
+			// Contraste
+			if (adjustments.contrast !== 0) {
+				const contrastFactor =
+					(259 * (adjustments.contrast * 255 + 255)) /
+					(255 * (259 - adjustments.contrast * 255));
+				r = contrastFactor * (r - 128) + 128;
+				g = contrastFactor * (g - 128) + 128;
+				b = contrastFactor * (b - 128) + 128;
+			}
+
+			// Saturación
+			if (adjustments.saturation !== 0) {
+				const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
+				const satFactor = 1 + adjustments.saturation;
+				r = gray + satFactor * (r - gray);
+				g = gray + satFactor * (g - gray);
+				b = gray + satFactor * (b - gray);
+			}
+
+			// Clamp valores entre 0-255
+			pixels[i] = Math.max(0, Math.min(255, r));
+			pixels[i + 1] = Math.max(0, Math.min(255, g));
+			pixels[i + 2] = Math.max(0, Math.min(255, b));
+		}
+
+		ctx.putImageData(imageData, 0, 0);
+		return tempCanvas;
+	}, [woodImg, woodColor, adjustments]);
+
 	useEffect(() => {
 		if (baseImg && maskImg) {
 			setProcessedMask(processMask());
 		}
 	}, [baseImg, maskImg, color, adjustments, processMask]);
 
-	const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const newColor = e.target.value;
-		setColor(newColor);
-		onColorChange?.(newColor);
-	};
+	useEffect(() => {
+		if (baseImg && woodImg) {
+			setProcessedWoodMask(processWoodMask());
+		}
+	}, [baseImg, woodImg, woodColor, adjustments, processWoodMask]);
+
+	const handleColorChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const newColor = e.target.value;
+			setColor(newColor);
+			onColorChange?.(newColor);
+
+			// Debounce processing
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+			timeoutRef.current = setTimeout(() => {
+				// Processing is triggered by setColor
+			}, 150);
+		},
+		[onColorChange]
+	);
+
+	const handleWoodColorChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const newColor = e.target.value;
+			setWoodColor(newColor);
+			onWoodColorChange?.(newColor);
+
+			// Debounce processing
+			if (woodTimeoutRef.current) {
+				clearTimeout(woodTimeoutRef.current);
+			}
+			woodTimeoutRef.current = setTimeout(() => {
+				// Processing is triggered by setWoodColor
+			}, 150);
+		},
+		[onWoodColorChange]
+	);
 
 	if (loading) {
 		return (
@@ -235,27 +483,82 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	}
 
 	return (
-		<div className={`space-y-6 ${className}`}>
+		<div className={`max-w-4xl mx-auto space-y-6 ${className}`}>
 			{/* Canvas Preview */}
 			<Card>
 				<CardContent className='p-4'>
 					<div className='relative w-full rounded-lg bg-background border'>
 						<Stage width={width} height={height}>
 							<Layer>
-								{baseImg && <KonvaImage image={baseImg} />}
-								{processedMask && (
-									<KonvaImage
-										image={processedMask}
-										globalCompositeOperation='multiply'
-									/>
-								)}
-								{processedMask && (
-									<KonvaImage
-										image={processedMask}
-										globalCompositeOperation='overlay'
-										opacity={0.2}
-									/>
-								)}
+								{baseImg &&
+									(() => {
+										const scale = Math.min(
+											width / baseImg.width,
+											height / baseImg.height
+										);
+										const x = (width - baseImg.width * scale) / 2;
+										const y = (height - baseImg.height * scale) / 2;
+										return (
+											<KonvaImage
+												image={baseImg}
+												x={x}
+												y={y}
+												scaleX={scale}
+												scaleY={scale}
+											/>
+										);
+									})()}
+								{processedWoodMask &&
+									woodImg &&
+									(() => {
+										const scale = Math.min(
+											width / woodImg.width,
+											height / woodImg.height
+										);
+										const x = (width - woodImg.width * scale) / 2;
+										const y = (height - woodImg.height * scale) / 2;
+										return (
+											<KonvaImage
+												image={processedWoodMask}
+												x={x}
+												y={y}
+												scaleX={scale}
+												scaleY={scale}
+												globalCompositeOperation='multiply'
+											/>
+										);
+									})()}
+								{processedMask &&
+									maskImg &&
+									(() => {
+										const scale = Math.min(
+											width / maskImg.width,
+											height / maskImg.height
+										);
+										const x = (width - maskImg.width * scale) / 2;
+										const y = (height - maskImg.height * scale) / 2;
+										return (
+											<>
+												<KonvaImage
+													image={processedMask}
+													x={x}
+													y={y}
+													scaleX={scale}
+													scaleY={scale}
+													globalCompositeOperation='multiply'
+												/>
+												<KonvaImage
+													image={processedMask}
+													x={x}
+													y={y}
+													scaleX={scale}
+													scaleY={scale}
+													globalCompositeOperation='overlay'
+													opacity={0.2}
+												/>
+											</>
+										);
+									})()}
 							</Layer>
 						</Stage>
 					</div>
@@ -264,9 +567,29 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 			{/* Controls */}
 			<Card>
-				<CardContent className='p-6 space-y-6'>
-					{/* Color Picker */}
+				<CardContent className='p-4 space-y-4'>
+					{/* Color Pickers */}
 					<div className='space-y-4'>
+						<div className='flex items-center justify-between'>
+							<Label
+								htmlFor='wood-color-picker'
+								className='text-base font-semibold'
+							>
+								🪵 Color del Barniz de Madera
+							</Label>
+							<div className='flex items-center gap-3'>
+								<input
+									id='wood-color-picker'
+									type='color'
+									value={woodColor}
+									onChange={handleWoodColorChange}
+									className='h-10 w-20 rounded-md border-2 border-input cursor-pointer transition-transform hover:scale-105'
+								/>
+								<code className='px-3 py-2 bg-muted rounded-md text-sm font-mono font-semibold'>
+									{woodColor.toUpperCase()}
+								</code>
+							</div>
+						</div>
 						<div className='flex items-center justify-between'>
 							<Label htmlFor='color-picker' className='text-base font-semibold'>
 								🎨 Color de la Tela
@@ -292,7 +615,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 						</h3>
 
 						{/* Brightness Slider */}
-						<div className='space-y-3 mb-6'>
+						<div className='space-y-2 mb-4'>
 							<div className='flex items-center justify-between'>
 								<Label htmlFor='brightness-slider'>Brillo</Label>
 								<span className='text-sm font-medium text-muted-foreground tabular-nums'>
@@ -313,7 +636,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 						</div>
 
 						{/* Contrast Slider */}
-						<div className='space-y-3 mb-6'>
+						<div className='space-y-2 mb-4'>
 							<div className='flex items-center justify-between'>
 								<Label htmlFor='contrast-slider'>Contraste</Label>
 								<span className='text-sm font-medium text-muted-foreground tabular-nums'>
@@ -334,7 +657,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 						</div>
 
 						{/* Saturation Slider */}
-						<div className='space-y-3'>
+						<div className='space-y-2'>
 							<div className='flex items-center justify-between'>
 								<Label htmlFor='saturation-slider'>Saturación</Label>
 								<span className='text-sm font-medium text-muted-foreground tabular-nums'>
