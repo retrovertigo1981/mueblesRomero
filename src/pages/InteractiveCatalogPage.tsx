@@ -13,13 +13,15 @@ const InteractiveCatalogPage = () => {
 				maskImageUrl={mascaraTela}
 				woodMaskImageUrl={mascaraMadera}
 				defaultColorId='beige'
-				defaultWoodColor='#8B4513'
-				width={600}
-				height={600}
+				defaultWoodColorId='natural'
+				width={500}
+				height={500}
 				onColorChange={(colorId, hex) =>
 					console.log('Fabric Color:', colorId, hex)
 				}
-				onWoodColorChange={(color) => console.log('Wood Color:', color)}
+				onWoodColorChange={(colorId, hex) =>
+					console.log('Wood Color:', colorId, hex)
+				}
 			/>
 		</div>
 	);
