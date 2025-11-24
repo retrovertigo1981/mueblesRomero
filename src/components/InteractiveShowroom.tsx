@@ -1,10 +1,4 @@
-import React, {
-	useEffect,
-	useState,
-	useCallback,
-	useRef,
-	useMemo,
-} from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,11 +23,11 @@ interface InteractiveShowroomProps {
 	maskImageUrl: string;
 	woodMaskImageUrl: string;
 	defaultColorId?: string; // Ahora usa ID de paleta
-	defaultWoodColor?: string;
+	defaultWoodColorId?: string;
 	width?: number;
 	height?: number;
 	onColorChange?: (colorId: string, hex: string) => void;
-	onWoodColorChange?: (color: string) => void;
+	onWoodColorChange?: (colorId: string, hex: string) => void;
 	className?: string;
 }
 
@@ -42,7 +36,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	maskImageUrl,
 	woodMaskImageUrl,
 	defaultColorId = 'beige',
-	defaultWoodColor = '#8B4513',
+	defaultWoodColorId = 'natural',
 	width = 600,
 	height = 450,
 	onColorChange,
@@ -50,7 +44,8 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	className = '',
 }) => {
 	const [selectedColorId, setSelectedColorId] = useState(defaultColorId);
-	const [woodColor, setWoodColor] = useState(defaultWoodColor);
+	const [selectedWoodColorId, setSelectedWoodColorId] =
+		useState(defaultWoodColorId);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [processedMask, setProcessedMask] = useState<HTMLCanvasElement | null>(
@@ -62,7 +57,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [baseImg, setBaseImg] = useState<HTMLImageElement | null>(null);
 	const [maskImg, setMaskImg] = useState<HTMLImageElement | null>(null);
 	const [woodImg, setWoodImg] = useState<HTMLImageElement | null>(null);
-	const woodTimeoutRef = useRef<number | null>(null);
 
 	const loadImage = (url: string): Promise<HTMLImageElement> => {
 		return new Promise((resolve, reject) => {
@@ -74,17 +68,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			img.onerror = (e) => reject(e);
 			img.src = url;
 		});
-	};
-
-	const hexToRgb = (hex: string) => {
-		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-		return result
-			? {
-					r: parseInt(result[1], 16),
-					g: parseInt(result[2], 16),
-					b: parseInt(result[3], 16),
-			  }
-			: { r: 139, g: 69, b: 19 };
 	};
 
 	// RGB to XYZ
@@ -183,10 +166,26 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		}));
 	}, []);
 
+	// Pre-calcular LAB para colores de madera
+	const paletaMaderaConLab: ColorTelaWithLab[] = useMemo(() => {
+		return COLORES_MADERA.map((color) => ({
+			...color,
+			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
+		}));
+	}, []);
+
 	// Obtener color seleccionado actual
 	const selectedColor = useMemo(
 		() => paletaConLab.find((c) => c.id === selectedColorId) || paletaConLab[0],
 		[selectedColorId, paletaConLab]
+	);
+
+	// Obtener color de madera seleccionado actual
+	const selectedWoodColor = useMemo(
+		() =>
+			paletaMaderaConLab.find((c) => c.id === selectedWoodColorId) ||
+			paletaMaderaConLab[0],
+		[selectedWoodColorId, paletaMaderaConLab]
 	);
 
 	// Cargar imágenes
@@ -298,23 +297,31 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 						Math.min(255, gray + satFactor * (b - gray))
 					);
 				}
-			} else {
-				// Madera: aumentar contraste de vetas
+			}
+
+			if (materialType === 'wood') {
+				// Paso 1: Realzar contraste de vetas (lo tienes bien)
+				// Paso 2: Añadir brillo especular (esto falta)
+				// Paso 3: Saturación cálida para madera
+
 				for (let i = 0; i < pixels.length; i += 4) {
 					if (pixels[i + 3] === 0) continue;
 
-					const r = pixels[i];
-					const g = pixels[i + 1];
-					const b = pixels[i + 2];
+					// Realzar contraste (ya lo tienes)
+					const r = pixels[i],
+						g = pixels[i + 1],
+						b = pixels[i + 2];
 					const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
+					const contrasted = (luminosity - 128) * 1.2 + 128; // Más contraste
+					const delta = contrasted - luminosity;
 
-					const contrastFactor = 1.18;
-					const adjusted = (luminosity - 128) * contrastFactor + 128;
-					const delta = adjusted - luminosity;
+					// Añadir brillo cálido (simula barniz)
+					const warmth = 1.05; // Más rojizo
+					const brightness = 1.08; // Ligeramente más brillante
 
-					pixels[i] = Math.max(0, Math.min(255, r + delta));
-					pixels[i + 1] = Math.max(0, Math.min(255, g + delta));
-					pixels[i + 2] = Math.max(0, Math.min(255, b + delta));
+					pixels[i] = Math.min(255, (r + delta) * warmth * brightness);
+					pixels[i + 1] = Math.min(255, (g + delta) * brightness);
+					pixels[i + 2] = Math.min(255, (b + delta) * warmth * 0.95);
 				}
 			}
 
@@ -330,78 +337,11 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		[maskImg, selectedColor, processMaskWithPalette]
 	);
 
-	// Procesar máscara de madera (aún usa selector libre por ahora)
-	const processWoodMask = useCallback((): HTMLCanvasElement | null => {
-		if (!woodImg) return null;
-
-		const canvas = document.createElement('canvas');
-		canvas.width = woodImg.width;
-		canvas.height = woodImg.height;
-		const ctx = canvas.getContext('2d', { willReadFrequently: true });
-		if (!ctx) return null;
-
-		ctx.drawImage(woodImg, 0, 0);
-		const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-		const pixels = imageData.data;
-
-		const targetRgb = hexToRgb(woodColor);
-		const targetLab = rgbToLab(targetRgb.r, targetRgb.g, targetRgb.b);
-		const colorIntensity = 0.65;
-
-		for (let i = 0; i < pixels.length; i += 4) {
-			const alpha = pixels[i + 3];
-
-			if (alpha < 30) {
-				pixels[i + 3] = 0;
-				continue;
-			}
-
-			const r = pixels[i];
-			const g = pixels[i + 1];
-			const b = pixels[i + 2];
-
-			const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
-			const maskL = (luminosity / 255) * 100;
-
-			const targetLMin = Math.max(0, targetLab.l - 20);
-			const targetLMax = Math.min(100, targetLab.l + 20);
-			const adjustedL = targetLMin + (maskL / 100) * (targetLMax - targetLMin);
-
-			const blendFactor = (alpha / 255) * colorIntensity;
-
-			const finalL = adjustedL;
-			const finalA = targetLab.a * blendFactor;
-			const finalB = targetLab.b * blendFactor;
-
-			const finalRgb = labToRgb(finalL, finalA, finalB);
-
-			pixels[i] = finalRgb.r;
-			pixels[i + 1] = finalRgb.g;
-			pixels[i + 2] = finalRgb.b;
-			pixels[i + 3] = Math.max(0, alpha - 8);
-		}
-
-		// Post-procesamiento para madera
-		for (let i = 0; i < pixels.length; i += 4) {
-			if (pixels[i + 3] === 0) continue;
-
-			const r = pixels[i];
-			const g = pixels[i + 1];
-			const b = pixels[i + 2];
-			const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
-
-			const contrastFactor = 1.18;
-			const adjusted = (luminosity - 128) * contrastFactor + 128;
-			const delta = adjusted - luminosity;
-
-			pixels[i] = Math.max(0, Math.min(255, r + delta));
-			pixels[i + 1] = Math.max(0, Math.min(255, g + delta));
-			pixels[i + 2] = Math.max(0, Math.min(255, b + delta));
-		}
-
-		ctx.putImageData(imageData, 0, 0);
-		return canvas;
-	}, [woodImg, woodColor]);
+	// Procesar máscara de madera con color de paleta
+	const processWoodMask = useCallback(
+		() => processMaskWithPalette(woodImg, selectedWoodColor, 'wood'),
+		[woodImg, selectedWoodColor, processMaskWithPalette]
+	);
 
 	useEffect(() => {
 		if (baseImg && maskImg) {
@@ -413,7 +353,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		if (baseImg && woodImg) {
 			setProcessedWoodMask(processWoodMask());
 		}
-	}, [baseImg, woodImg, woodColor, processWoodMask]);
+	}, [baseImg, woodImg, selectedWoodColorId, processWoodMask]);
 
 	const handleColorSelect = (colorId: string) => {
 		const color = paletaConLab.find((c) => c.id === colorId);
@@ -423,19 +363,13 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		onColorChange?.(colorId, color.hex);
 	};
 
-	const handleWoodColorChange = useCallback(
-		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const newColor = e.target.value;
-			setWoodColor(newColor);
-			onWoodColorChange?.(newColor);
+	const handleWoodColorSelect = (colorId: string) => {
+		const color = paletaMaderaConLab.find((c) => c.id === colorId);
+		if (!color) return;
 
-			if (woodTimeoutRef.current) {
-				clearTimeout(woodTimeoutRef.current);
-			}
-			woodTimeoutRef.current = setTimeout(() => {}, 150);
-		},
-		[onWoodColorChange]
-	);
+		setSelectedWoodColorId(colorId);
+		onWoodColorChange?.(colorId, color.hex);
+	};
 
 	if (loading) {
 		return (
@@ -466,154 +400,187 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	}
 
 	return (
-		<div className={`max-w-4xl mx-auto space-y-6 ${className}`}>
+		<div className={`max-w-4xl mx-auto space-y-6 mt-32 mb-10 ${className}`}>
+			<div className='text-center mb-12'>
+				<h2 className='text-4xl font-serif-display font-bold mb-4 text-foreground mt-8'>
+					Personalizador Interactivo
+				</h2>
+				<p className='text-muted-foreground text-lg max-w-2xl mx-auto'>
+					Visualiza tu mueble con diferentes colores
+				</p>
+			</div>
 			{/* Canvas Preview */}
-			<Card>
-				<CardContent className='p-4'>
-					<div className='relative w-full rounded-lg bg-background border'>
-						<Stage width={width} height={height}>
-							<Layer>
-								{baseImg &&
-									(() => {
-										const scale = Math.min(
-											width / baseImg.width,
-											height / baseImg.height
-										);
-										const x = (width - baseImg.width * scale) / 2;
-										const y = (height - baseImg.height * scale) / 2;
-										return (
-											<KonvaImage
-												image={baseImg}
-												x={x}
-												y={y}
-												scaleX={scale}
-												scaleY={scale}
-											/>
-										);
-									})()}
-								{processedWoodMask &&
-									woodImg &&
-									(() => {
-										const scale = Math.min(
-											width / woodImg.width,
-											height / woodImg.height
-										);
-										const x = (width - woodImg.width * scale) / 2;
-										const y = (height - woodImg.height * scale) / 2;
-										return (
-											<KonvaImage
-												image={processedWoodMask}
-												x={x}
-												y={y}
-												scaleX={scale}
-												scaleY={scale}
-												// globalCompositeOperation='source-over'
-												globalCompositeOperation='multiply'
-												opacity={0.92}
-											/>
-										);
-									})()}
-								{processedMask &&
-									maskImg &&
-									(() => {
-										const scale = Math.min(
-											width / maskImg.width,
-											height / maskImg.height
-										);
-										const x = (width - maskImg.width * scale) / 2;
-										const y = (height - maskImg.height * scale) / 2;
-										return (
-											<KonvaImage
-												image={processedMask}
-												x={x}
-												y={y}
-												scaleX={scale}
-												scaleY={scale}
-												globalCompositeOperation='source-over'
-												opacity={0.95}
-											/>
-										);
-									})()}
-							</Layer>
-						</Stage>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Controls */}
-			<Card>
-				<CardContent className='p-6 space-y-6'>
-					{/* Selector de Color de Tela */}
-					<div>
-						<Label className='text-base font-semibold mb-3 block'>
-							🎨 Color de la Tela
-						</Label>
-						<Select value={selectedColorId} onValueChange={handleColorSelect}>
-							<SelectTrigger className='w-full'>
-								<SelectValue>
-									{selectedColor && (
-										<div className='flex items-center gap-2'>
-											<div
-												className='w-4 h-4 rounded border'
-												style={{ backgroundColor: selectedColor.hex }}
-											/>
-											<span>{selectedColor.nombre}</span>
-										</div>
-									)}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								{paletaConLab.map((color) => (
-									<SelectItem key={color.id} value={color.id}>
-										<div className='flex items-center gap-2'>
-											<div
-												className='w-4 h-4 rounded border'
-												style={{ backgroundColor: color.hex }}
-											/>
-											<span>{color.nombre}</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<p className='text-sm text-muted-foreground mt-2 text-center'>
-							Seleccionado:{' '}
-							<span className='font-semibold'>{selectedColor.nombre}</span>
-							<code className='ml-2 px-2 py-0.5 bg-muted rounded text-xs'>
-								{selectedColor.hex}
-							</code>
-						</p>
-					</div>
-
-					{/* Selector de Color de Madera (temporal, hasta que optimices la máscara) */}
-					<div className='border-t pt-4'>
-						<div className='flex items-center justify-between'>
-							<Label
-								htmlFor='wood-color-picker'
-								className='text-base font-semibold'
+			<div className='flex gap-3'>
+				<Card>
+					<CardContent className='p-4'>
+						<div className='relative w-full rounded-lg bg-background border'>
+							<Stage
+								width={width}
+								height={height}
+								className='flex justify-center'
 							>
+								<Layer>
+									{baseImg &&
+										(() => {
+											const scale = Math.min(
+												width / baseImg.width,
+												height / baseImg.height
+											);
+											const x = (width - baseImg.width * scale) / 2;
+											const y = (height - baseImg.height * scale) / 2;
+											return (
+												<KonvaImage
+													image={baseImg}
+													x={x}
+													y={y}
+													scaleX={scale}
+													scaleY={scale}
+												/>
+											);
+										})()}
+									{processedWoodMask &&
+										woodImg &&
+										(() => {
+											const scale = Math.min(
+												width / woodImg.width,
+												height / woodImg.height
+											);
+											const x = (width - woodImg.width * scale) / 2;
+											const y = (height - woodImg.height * scale) / 2;
+											return (
+												<KonvaImage
+													image={processedWoodMask}
+													x={x}
+													y={y}
+													scaleX={scale}
+													scaleY={scale}
+													// globalCompositeOperation='overlay'
+													globalCompositeOperation='multiply'
+													opacity={0.92}
+												/>
+											);
+										})()}
+									{processedMask &&
+										maskImg &&
+										(() => {
+											const scale = Math.min(
+												width / maskImg.width,
+												height / maskImg.height
+											);
+											const x = (width - maskImg.width * scale) / 2;
+											const y = (height - maskImg.height * scale) / 2;
+											return (
+												<KonvaImage
+													image={processedMask}
+													x={x}
+													y={y}
+													scaleX={scale}
+													scaleY={scale}
+													globalCompositeOperation='source-over'
+													opacity={0.95}
+												/>
+											);
+										})()}
+								</Layer>
+							</Stage>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Controls */}
+				<Card>
+					<CardContent className='p-6 space-y-6'>
+						{/* Selector de Color de Tela */}
+						<div>
+							<Label className='text-base font-semibold mb-3 block'>
+								🎨 Color de la Tela
+							</Label>
+							<Select value={selectedColorId} onValueChange={handleColorSelect}>
+								<SelectTrigger className='w-full'>
+									<SelectValue>
+										{selectedColor && (
+											<div className='flex items-center gap-2'>
+												<div
+													className='w-4 h-4 rounded border'
+													style={{ backgroundColor: selectedColor.hex }}
+												/>
+												<span>{selectedColor.nombre}</span>
+											</div>
+										)}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent>
+									{paletaConLab.map((color) => (
+										<SelectItem key={color.id} value={color.id}>
+											<div className='flex items-center gap-2'>
+												<div
+													className='w-4 h-4 rounded border'
+													style={{ backgroundColor: color.hex }}
+												/>
+												<span>{color.nombre}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<p className='text-sm text-muted-foreground mt-2 text-center'>
+								Seleccionado:{' '}
+								<span className='font-semibold'>{selectedColor.nombre}</span>
+								<code className='ml-2 px-2 py-0.5 bg-muted rounded text-xs'>
+									{selectedColor.hex}
+								</code>
+							</p>
+						</div>
+
+						{/* Selector de Color de Madera */}
+						<div className='border-t pt-4'>
+							<Label className='text-base font-semibold mb-3 block'>
 								🪵 Color del Barniz de Madera
 							</Label>
-							<div className='flex items-center gap-3'>
-								<input
-									id='wood-color-picker'
-									type='color'
-									value={woodColor}
-									onChange={handleWoodColorChange}
-									className='h-10 w-20 rounded-md border-2 border-input cursor-pointer transition-transform hover:scale-105'
-								/>
-								<code className='px-3 py-2 bg-muted rounded-md text-sm font-mono font-semibold'>
-									{woodColor.toUpperCase()}
+							<Select
+								value={selectedWoodColorId}
+								onValueChange={handleWoodColorSelect}
+							>
+								<SelectTrigger className='w-full'>
+									<SelectValue>
+										{selectedWoodColor && (
+											<div className='flex items-center gap-2'>
+												<div
+													className='w-4 h-4 rounded border'
+													style={{ backgroundColor: selectedWoodColor.hex }}
+												/>
+												<span>{selectedWoodColor.nombre}</span>
+											</div>
+										)}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent>
+									{paletaMaderaConLab.map((color) => (
+										<SelectItem key={color.id} value={color.id}>
+											<div className='flex items-center gap-2'>
+												<div
+													className='w-4 h-4 rounded border'
+													style={{ backgroundColor: color.hex }}
+												/>
+												<span>{color.nombre}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<p className='text-sm text-muted-foreground mt-2 text-center'>
+								Seleccionado:{' '}
+								<span className='font-semibold'>
+									{selectedWoodColor.nombre}
+								</span>
+								<code className='ml-2 px-2 py-0.5 bg-muted rounded text-xs'>
+									{selectedWoodColor.hex}
 								</code>
-							</div>
+							</p>
 						</div>
-						<p className='text-xs text-amber-600 mt-2 flex items-center gap-1'>
-							⚠️ Recuerda optimizar la máscara de madera con textura para
-							mejores resultados
-						</p>
-					</div>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	);
 };
