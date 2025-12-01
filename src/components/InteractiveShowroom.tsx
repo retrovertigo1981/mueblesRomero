@@ -1,8 +1,13 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, {
+	useEffect,
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+} from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Palette, Trees, Package, ShoppingCart } from 'lucide-react';
 import {
 	Select,
 	SelectContent,
@@ -18,34 +23,76 @@ interface ColorTelaWithLab extends Colores {
 	lab: { l: number; a: number; b: number };
 }
 
-interface InteractiveShowroomProps {
+interface CustomizableFurniture {
+	id: string;
+	name: string;
 	baseImageUrl: string;
 	maskImageUrl: string;
 	woodMaskImageUrl: string;
-	defaultColorId?: string; // Ahora usa ID de paleta
-	defaultWoodColorId?: string;
-	width?: number;
-	height?: number;
-	onColorChange?: (colorId: string, hex: string) => void;
-	onWoodColorChange?: (colorId: string, hex: string) => void;
+	defaultColorId: string;
+	defaultWoodColorId: string;
+}
+
+interface InteractiveShowroomProps {
 	className?: string;
 }
 
+// 🪑 CATÁLOGO DE MUEBLES
+const FURNITURE_CATALOG: CustomizableFurniture[] = [
+	{
+		id: 'silla-dining',
+		name: 'Silla Comedor',
+		baseImageUrl: 'src/assets/base_neutra.png',
+		maskImageUrl: 'src/assets/mascara_sillas_rango_completo_2.png',
+		woodMaskImageUrl: 'src/assets/mascara_madera_rango_completo.png',
+		defaultColorId: 'beige',
+		defaultWoodColorId: 'natural',
+	},
+	// PLACEHOLDERS - REEMPLAZA CON TUS IMÁGENES REALES
+	{
+		id: 'comedor-2',
+		name: 'Comedor 2',
+		baseImageUrl: 'src/assets/base-neutra-comedor-2.png',
+		maskImageUrl: 'src/assets/fabric-mask-comerdor-2.png',
+		woodMaskImageUrl: 'src/assets/wood-mask-comedor-2.png',
+		defaultColorId: 'gris',
+		defaultWoodColorId: 'nogal',
+	},
+	// {
+	// 	id: 'mesa-centro',
+	// 	name: 'Mesa de Centro',
+	// 	baseImageUrl: 'src/assets/mesa-base.jpg',
+	// 	maskImageUrl: 'src/assets/mesa-fabric-mask.png',
+	// 	woodMaskImageUrl: 'src/assets/mesa-wood-mask.png',
+	// 	defaultColorId: 'crudo',
+	// 	defaultWoodColorId: 'miel',
+	// },
+	// ... Agrega hasta 10 muebles
+];
+
 export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
-	baseImageUrl,
-	maskImageUrl,
-	woodMaskImageUrl,
-	defaultColorId = 'beige',
-	defaultWoodColorId = 'natural',
-	width = 600,
-	height = 450,
-	onColorChange,
-	onWoodColorChange,
 	className = '',
 }) => {
-	const [selectedColorId, setSelectedColorId] = useState(defaultColorId);
-	const [selectedWoodColorId, setSelectedWoodColorId] =
-		useState(defaultWoodColorId);
+	// Check for browser compatibility
+	useEffect(() => {
+		const isBrave = navigator.userAgent.includes('Brave');
+		if (isBrave) {
+			console.warn(
+				'Brave browser detected. KonvaJS may be blocked by Brave shield. Please disable it.'
+			);
+		}
+		console.log('Browser:', navigator.userAgent);
+	}, []);
+
+	const [selectedFurniture, setSelectedFurniture] =
+		useState<CustomizableFurniture>(FURNITURE_CATALOG[0]);
+	const [selectedColorId, setSelectedColorId] = useState(
+		FURNITURE_CATALOG[0].defaultColorId
+	);
+	const [selectedWoodColorId, setSelectedWoodColorId] = useState(
+		FURNITURE_CATALOG[0].defaultWoodColorId
+	);
+
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [processedMask, setProcessedMask] = useState<HTMLCanvasElement | null>(
@@ -58,129 +105,114 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [maskImg, setMaskImg] = useState<HTMLImageElement | null>(null);
 	const [woodImg, setWoodImg] = useState<HTMLImageElement | null>(null);
 
-	const loadImage = (url: string): Promise<HTMLImageElement> => {
-		return new Promise((resolve, reject) => {
-			const img = new Image();
-			if (!url.startsWith('/')) {
-				img.crossOrigin = 'anonymous';
-			}
-			img.onload = () => resolve(img);
-			img.onerror = (e) => reject(e);
-			img.src = url;
-		});
-	};
+	const isMounted = useRef(true);
 
-	// RGB to XYZ
-	const rgbToXyz = (r: number, g: number, b: number) => {
+	const loadImage = useCallback(
+		async (url: string): Promise<HTMLImageElement> => {
+			console.log('Loading image:', url);
+			return new Promise((resolve, reject) => {
+				const img = new Image();
+				// Remove crossOrigin for local images
+				img.onload = () => {
+					console.log('Image loaded successfully:', url);
+					resolve(img);
+				};
+				img.onerror = (e) => {
+					console.error('Failed to load image:', url, e);
+					reject(e);
+				};
+				img.src = url;
+			});
+		},
+		[]
+	);
+
+	// 🔬 ALGORITMO LAB (igual que antes)
+	const rgbToXyz = useCallback((r: number, g: number, b: number) => {
 		r = r / 255;
 		g = g / 255;
 		b = b / 255;
-
 		r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
 		g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
 		b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
-
 		r *= 100;
 		g *= 100;
 		b *= 100;
-
 		const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
 		const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
 		const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
-
 		return { x, y, z };
-	};
+	}, []);
 
-	// XYZ to LAB
-	const xyzToLab = (x: number, y: number, z: number) => {
+	const xyzToLab = useCallback((x: number, y: number, z: number) => {
 		x /= 95.047;
 		y /= 100.0;
 		z /= 108.883;
-
 		x = x > 0.008856 ? Math.pow(x, 1 / 3) : 7.787 * x + 16 / 116;
 		y = y > 0.008856 ? Math.pow(y, 1 / 3) : 7.787 * y + 16 / 116;
 		z = z > 0.008856 ? Math.pow(z, 1 / 3) : 7.787 * z + 16 / 116;
-
 		const l = 116 * y - 16;
 		const a = 500 * (x - y);
 		const b = 200 * (y - z);
-
 		return { l, a, b };
-	};
+	}, []);
 
-	// LAB to XYZ
-	const labToXyz = (l: number, a: number, b: number) => {
+	const labToXyz = useCallback((l: number, a: number, b: number) => {
 		let y = (l + 16) / 116;
 		let x = a / 500 + y;
 		let z = y - b / 200;
-
 		x = x > 0.206897 ? Math.pow(x, 3) : (x - 16 / 116) / 7.787;
 		y = y > 0.206897 ? Math.pow(y, 3) : (y - 16 / 116) / 7.787;
 		z = z > 0.206897 ? Math.pow(z, 3) : (z - 16 / 116) / 7.787;
-
 		x *= 95.047;
 		y *= 100.0;
 		z *= 108.883;
-
 		return { x, y, z };
-	};
+	}, []);
 
-	// XYZ to RGB
-	const xyzToRgb = (x: number, y: number, z: number) => {
+	const xyzToRgb = useCallback((x: number, y: number, z: number) => {
 		x /= 100;
 		y /= 100;
 		z /= 100;
-
 		let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
 		let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
 		let b = x * 0.0557 + y * -0.204 + z * 1.057;
-
 		r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
 		g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
 		b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
-
 		r = Math.max(0, Math.min(1, r)) * 255;
 		g = Math.max(0, Math.min(1, g)) * 255;
 		b = Math.max(0, Math.min(1, b)) * 255;
-
 		return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
-	};
+	}, []);
 
-	// RGB to LAB
-	const rgbToLab = (r: number, g: number, b: number) => {
-		const xyz = rgbToXyz(r, g, b);
-		return xyzToLab(xyz.x, xyz.y, xyz.z);
-	};
+	const rgbToLab = useCallback(
+		(r: number, g: number, b: number) => {
+			const xyz = rgbToXyz(r, g, b);
+			return xyzToLab(xyz.x, xyz.y, xyz.z);
+		},
+		[rgbToXyz, xyzToLab]
+	);
 
-	// LAB to RGB
-	const labToRgb = (l: number, a: number, b: number) => {
-		const xyz = labToXyz(l, a, b);
-		return xyzToRgb(xyz.x, xyz.y, xyz.z);
-	};
-
-	// Pre-calcular LAB para todos los colores (solo una vez)
 	const paletaConLab: ColorTelaWithLab[] = useMemo(() => {
 		return COLORES_TELA.map((color) => ({
 			...color,
 			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
 		}));
-	}, []);
+	}, [rgbToLab]);
 
-	// Pre-calcular LAB para colores de madera
 	const paletaMaderaConLab: ColorTelaWithLab[] = useMemo(() => {
 		return COLORES_MADERA.map((color) => ({
 			...color,
 			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
 		}));
-	}, []);
+	}, [rgbToLab]);
 
-	// Obtener color seleccionado actual
 	const selectedColor = useMemo(
 		() => paletaConLab.find((c) => c.id === selectedColorId) || paletaConLab[0],
 		[selectedColorId, paletaConLab]
 	);
 
-	// Obtener color de madera seleccionado actual
 	const selectedWoodColor = useMemo(
 		() =>
 			paletaMaderaConLab.find((c) => c.id === selectedWoodColorId) ||
@@ -188,33 +220,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		[selectedWoodColorId, paletaMaderaConLab]
 	);
 
-	// Cargar imágenes
-	useEffect(() => {
-		const loadImages = async () => {
-			try {
-				setLoading(true);
-				setError(null);
-
-				const baseImgLoaded = await loadImage(baseImageUrl);
-				const maskImgLoaded = await loadImage(maskImageUrl);
-				const woodImgLoaded = await loadImage(woodMaskImageUrl);
-
-				setBaseImg(baseImgLoaded);
-				setMaskImg(maskImgLoaded);
-				setWoodImg(woodImgLoaded);
-
-				setLoading(false);
-			} catch (err) {
-				console.error('Error loading images:', err);
-				setError('Error al cargar las imágenes. Verifica las URLs.');
-				setLoading(false);
-			}
-		};
-
-		loadImages();
-	}, [baseImageUrl, maskImageUrl, woodMaskImageUrl]);
-
-	// Función optimizada para aplicar colores de paleta
+	// 🪵 PROCESAMIENTO DE BARNIZ REALISTA
 	const processMaskWithPalette = useCallback(
 		(
 			maskImage: HTMLImageElement | null,
@@ -234,12 +240,12 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			const pixels = imageData.data;
 
 			const targetLab = colorTela.lab;
-			const colorIntensity = materialType === 'wood' ? 0.65 : 0.9;
+			const colorIntensity = materialType === 'wood' ? 0.68 : 0.92;
+			const contrastBoost = materialType === 'wood' ? 1.25 : 1.0;
+			const saturationFactor = materialType === 'wood' ? 1.15 : 1.1;
 
-			// Primera pasada: aplicar color preservando textura
 			for (let i = 0; i < pixels.length; i += 4) {
 				const alpha = pixels[i + 3];
-
 				if (alpha < 30) {
 					pixels[i + 3] = 0;
 					continue;
@@ -249,95 +255,163 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				const g = pixels[i + 1];
 				const b = pixels[i + 2];
 
-				// Extraer luminosidad de la textura de la máscara
 				const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
 				const maskL = (luminosity / 255) * 100;
 
-				// Mapear luminosidad de máscara al rango del color target
-				// Esto preserva variaciones de textura en el rango correcto
-				const targetLMin = Math.max(0, targetLab.l - 20);
-				const targetLMax = Math.min(100, targetLab.l + 20);
+				const targetLMin = Math.max(0, targetLab.l - 18);
+				const targetLMax = Math.min(100, targetLab.l + 22);
 				const adjustedL =
 					targetLMin + (maskL / 100) * (targetLMax - targetLMin);
 
 				const blendFactor = (alpha / 255) * colorIntensity;
-
-				// Aplicar cromaticidad del color target
-				const finalL = adjustedL;
+				const finalL = adjustedL * blendFactor + maskL * (1 - blendFactor);
 				const finalA = targetLab.a * blendFactor;
 				const finalB = targetLab.b * blendFactor;
 
-				const finalRgb = labToRgb(finalL, finalA, finalB);
+				const { x, y, z } = labToXyz(finalL, finalA, finalB);
+				const finalRgb = xyzToRgb(x, y, z);
 
 				pixels[i] = finalRgb.r;
 				pixels[i + 1] = finalRgb.g;
 				pixels[i + 2] = finalRgb.b;
-				pixels[i + 3] = Math.max(0, alpha - 8);
+				pixels[i + 3] = Math.max(0, alpha - 6);
 			}
 
-			// Segunda pasada: post-procesamiento según material
-			if (materialType === 'fabric') {
-				// Tela: ligero aumento de saturación para realismo
+			if (materialType === 'wood') {
 				for (let i = 0; i < pixels.length; i += 4) {
 					if (pixels[i + 3] === 0) continue;
 
+					let r = pixels[i];
+					let g = pixels[i + 1];
+					let b = pixels[i + 2];
+
+					const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
+					const contrasted = (luminosity - 128) * contrastBoost + 128;
+					const delta = contrasted - luminosity;
+
+					const glossIntensity = 0.85 + (luminosity / 255) * 0.15;
+					const warmth = 1.06;
+
+					r = Math.min(255, (r + delta) * glossIntensity * warmth);
+					g = Math.min(255, (g + delta) * glossIntensity);
+					b = Math.min(255, (b + delta) * glossIntensity * warmth * 0.95);
+
+					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+					pixels[i] = Math.min(255, gray + saturationFactor * (r - gray));
+					pixels[i + 1] = Math.min(255, gray + saturationFactor * (g - gray));
+					pixels[i + 2] = Math.min(255, gray + saturationFactor * (b - gray));
+				}
+			} else {
+				for (let i = 0; i < pixels.length; i += 4) {
+					if (pixels[i + 3] === 0) continue;
 					const r = pixels[i];
 					const g = pixels[i + 1];
 					const b = pixels[i + 2];
 					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-
-					const satFactor = 1.1;
-					pixels[i] = Math.max(0, Math.min(255, gray + satFactor * (r - gray)));
-					pixels[i + 1] = Math.max(
-						0,
-						Math.min(255, gray + satFactor * (g - gray))
-					);
-					pixels[i + 2] = Math.max(
-						0,
-						Math.min(255, gray + satFactor * (b - gray))
-					);
-				}
-			}
-
-			if (materialType === 'wood') {
-				// Paso 1: Realzar contraste de vetas (lo tienes bien)
-				// Paso 2: Añadir brillo especular (esto falta)
-				// Paso 3: Saturación cálida para madera
-
-				for (let i = 0; i < pixels.length; i += 4) {
-					if (pixels[i + 3] === 0) continue;
-
-					// Realzar contraste (ya lo tienes)
-					const r = pixels[i],
-						g = pixels[i + 1],
-						b = pixels[i + 2];
-					const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
-					const contrasted = (luminosity - 128) * 1.2 + 128; // Más contraste
-					const delta = contrasted - luminosity;
-
-					// Añadir brillo cálido (simula barniz)
-					const warmth = 1.05; // Más rojizo
-					const brightness = 1.08; // Ligeramente más brillante
-
-					pixels[i] = Math.min(255, (r + delta) * warmth * brightness);
-					pixels[i + 1] = Math.min(255, (g + delta) * brightness);
-					pixels[i + 2] = Math.min(255, (b + delta) * warmth * 0.95);
+					pixels[i] = Math.min(255, gray + saturationFactor * (r - gray));
+					pixels[i + 1] = Math.min(255, gray + saturationFactor * (g - gray));
+					pixels[i + 2] = Math.min(255, gray + saturationFactor * (b - gray));
 				}
 			}
 
 			ctx.putImageData(imageData, 0, 0);
 			return canvas;
 		},
+		[xyzToRgb, labToXyz]
+	);
+
+	// 📏 SISTEMA DE ESCALADO "COVER" - ¡NUEVO!
+	const calculateCoverDimensions = useCallback(
+		(
+			imgWidth: number,
+			imgHeight: number,
+			containerWidth: number,
+			containerHeight: number
+		) => {
+			const imgAspect = imgWidth / imgHeight;
+			const containerAspect = containerWidth / containerHeight;
+
+			let width: number;
+			let height: number;
+			let x: number;
+			let y: number;
+
+			if (imgAspect > containerAspect) {
+				// Imagen más ancha - escalar por altura
+				height = containerHeight;
+				width = height * imgAspect;
+				x = (containerWidth - width) / 2;
+				y = 0;
+			} else {
+				// Imagen más alta - escalar por ancho
+				width = containerWidth;
+				height = width / imgAspect;
+				x = 0;
+				y = (containerHeight - height) / 2;
+			}
+
+			return {
+				width,
+				height,
+				x,
+				y,
+				scaleX: width / imgWidth,
+				scaleY: height / imgHeight,
+			};
+		},
 		[]
 	);
 
-	// Procesar máscara de tela con color de paleta
+	// 🔄 CARGA DE IMÁGENES
+	useEffect(() => {
+		isMounted.current = true;
+		const loadAllImages = async () => {
+			try {
+				setLoading(true);
+				setError(null);
+
+				console.log('Loading furniture:', selectedFurniture.name);
+				console.log('Base URL:', selectedFurniture.baseImageUrl);
+				console.log('Mask URL:', selectedFurniture.maskImageUrl);
+				console.log('Wood URL:', selectedFurniture.woodMaskImageUrl);
+
+				const [base, mask, wood] = await Promise.all([
+					loadImage(selectedFurniture.baseImageUrl),
+					loadImage(selectedFurniture.maskImageUrl),
+					loadImage(selectedFurniture.woodMaskImageUrl),
+				]);
+
+				if (!isMounted.current) return;
+
+				setBaseImg(base);
+				setMaskImg(mask);
+				setWoodImg(wood);
+				setLoading(false);
+			} catch (err) {
+				if (!isMounted.current) return;
+				console.error('Error loading images:', err);
+				setError('Error al cargar las imágenes. Verifica las URLs.');
+				setLoading(false);
+			}
+		};
+
+		setProcessedMask(null);
+		setProcessedWoodMask(null);
+		setBaseImg(null);
+		setMaskImg(null);
+		setWoodImg(null);
+		loadAllImages();
+
+		return () => {
+			isMounted.current = false;
+		};
+	}, [selectedFurniture, loadImage]);
+
 	const processMask = useCallback(
 		() => processMaskWithPalette(maskImg, selectedColor, 'fabric'),
 		[maskImg, selectedColor, processMaskWithPalette]
 	);
 
-	// Procesar máscara de madera con color de paleta
 	const processWoodMask = useCallback(
 		() => processMaskWithPalette(woodImg, selectedWoodColor, 'wood'),
 		[woodImg, selectedWoodColor, processMaskWithPalette]
@@ -355,232 +429,1011 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		}
 	}, [baseImg, woodImg, selectedWoodColorId, processWoodMask]);
 
-	const handleColorSelect = (colorId: string) => {
-		const color = paletaConLab.find((c) => c.id === colorId);
-		if (!color) return;
+	// 📱 DIMENSIONES RESPONSIVAS DEL CANVAS
+	const canvasSize =
+		typeof window !== 'undefined' && window.innerWidth < 768
+			? { width: 350, height: 350 }
+			: { width: 600, height: 600 };
 
+	// 🎯 CÁLCULO DE DIMENSIONES DE LAS IMÁGENES (AHORA USANDO "COVER")
+	const getImageDimensions = useCallback(() => {
+		if (!baseImg) return null;
+		return calculateCoverDimensions(
+			baseImg.width,
+			baseImg.height,
+			canvasSize.width,
+			canvasSize.height
+		);
+	}, [baseImg, canvasSize.width, canvasSize.height, calculateCoverDimensions]);
+
+	const dimensions = getImageDimensions();
+
+	const handleFurnitureSelect = (furnitureId: string) => {
+		const furniture = FURNITURE_CATALOG.find((f) => f.id === furnitureId);
+		if (!furniture) return;
+		setSelectedFurniture(furniture);
+		setSelectedColorId(furniture.defaultColorId);
+		setSelectedWoodColorId(furniture.defaultWoodColorId);
+	};
+
+	const handleColorSelect = (colorId: string) => {
 		setSelectedColorId(colorId);
-		onColorChange?.(colorId, color.hex);
 	};
 
 	const handleWoodColorSelect = (colorId: string) => {
-		const color = paletaMaderaConLab.find((c) => c.id === colorId);
-		if (!color) return;
-
 		setSelectedWoodColorId(colorId);
-		onWoodColorChange?.(colorId, color.hex);
+	};
+
+	const handleCreateOrder = () => {
+		const orderData = {
+			furniture: selectedFurniture.name,
+			fabricColor: selectedColor.nombre,
+			woodColor: selectedWoodColor.nombre,
+			timestamp: new Date().toISOString(),
+		};
+		console.log('🛒 Orden generada:', orderData);
+		alert(
+			`Orden generada para: ${selectedFurniture.name}\nTela: ${selectedColor.nombre}\nMadera: ${selectedWoodColor.nombre}`
+		);
 	};
 
 	if (loading) {
 		return (
-			<Card className={className}>
-				<CardContent className='flex items-center justify-center h-96'>
-					<div className='flex flex-col items-center gap-4'>
-						<Loader2 className='h-8 w-8 animate-spin text-primary' />
-						<p className='text-muted-foreground'>Cargando showroom...</p>
-					</div>
-				</CardContent>
-			</Card>
+			<div className='min-h-screen flex items-center justify-center'>
+				<Card className={className}>
+					<CardContent className='flex items-center justify-center h-96 p-6'>
+						<div className='flex flex-col items-center gap-4'>
+							<Loader2 className='h-8 w-8 animate-spin text-primary' />
+							<p className='text-muted-foreground'>
+								Cargando personalizador...
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<Card className={className}>
-				<CardContent className='flex items-center justify-center h-96'>
-					<div className='text-center'>
-						<p className='text-destructive font-semibold mb-2'>⚠️ {error}</p>
-						<p className='text-sm text-muted-foreground'>
-							Por favor, verifica las URLs de las imágenes
-						</p>
-					</div>
-				</CardContent>
-			</Card>
+			<div className='min-h-screen flex items-center justify-center'>
+				<Card className={className}>
+					<CardContent className='flex items-center justify-center h-96 p-6'>
+						<div className='text-center'>
+							<p className='text-destructive font-semibold mb-2'>⚠️ {error}</p>
+							<p className='text-sm text-muted-foreground'>
+								Verifica que las imágenes existan en la carpeta assets
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
 	return (
-		<div className={`max-w-4xl mx-auto space-y-6 mt-32 mb-10 ${className}`}>
-			<div className='text-center mb-12'>
-				<h2 className='text-4xl font-serif-display font-bold mb-4 text-foreground mt-8'>
-					Personalizador Interactivo
-				</h2>
-				<p className='text-muted-foreground text-lg max-w-2xl mx-auto'>
-					Visualiza tu mueble con diferentes colores
-				</p>
-			</div>
-			{/* Canvas Preview */}
-			<div className='flex gap-3'>
-				<Card>
-					<CardContent className='p-4'>
-						<div className='relative w-full rounded-lg bg-background border'>
-							<Stage
-								width={width}
-								height={height}
-								className='flex justify-center'
-							>
-								<Layer>
-									{baseImg &&
-										(() => {
-											const scale = Math.min(
-												width / baseImg.width,
-												height / baseImg.height
-											);
-											const x = (width - baseImg.width * scale) / 2;
-											const y = (height - baseImg.height * scale) / 2;
-											return (
+		<div
+			className={`min-h-screen bg-background py-8 sm:py-12 md:py-16 ${className}`}
+		>
+			{' '}
+			<div className='container mx-auto px-8 sm:px-6'>
+				{/* TÍTULO */}
+				<div className='text-center mb-8 sm:mb-10 md:mb-12'>
+					<h2 className='text-3xl sm:text-4xl md:text-5xl font-serif-display font-bold mb-3 text-foreground'>
+						Personaliza tu Mueble
+					</h2>
+					<p className='text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto'>
+						Selecciona el mueble y juega con los colores hasta encontrar tu
+						combinación perfecta
+					</p>
+				</div>
+
+				{/* GRID PRINCIPAL */}
+				<div className='grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start max-w-7xl mx-auto'>
+					{/* CANVAS - IZQUIERDA */}
+					<div className='order-1 lg:order-1'>
+						<Card className='shadow-soft hover:shadow-hover transition-all duration-300'>
+							<CardContent className='p-4 sm:p-6'>
+								<div
+									className='relative w-full rounded-lg bg-muted overflow-hidden'
+									style={{
+										aspectRatio: `${canvasSize.width} / ${canvasSize.height}`,
+									}}
+								>
+									<Stage
+										width={canvasSize.width}
+										height={canvasSize.height}
+										className='w-full h-full'
+									>
+										<Layer>
+											{/* Imagen Base */}
+											{dimensions && baseImg && (
 												<KonvaImage
 													image={baseImg}
-													x={x}
-													y={y}
-													scaleX={scale}
-													scaleY={scale}
+													x={dimensions.x}
+													y={dimensions.y}
+													width={dimensions.width}
+													height={dimensions.height}
 												/>
-											);
-										})()}
-									{processedWoodMask &&
-										woodImg &&
-										(() => {
-											const scale = Math.min(
-												width / woodImg.width,
-												height / woodImg.height
-											);
-											const x = (width - woodImg.width * scale) / 2;
-											const y = (height - woodImg.height * scale) / 2;
-											return (
+											)}
+
+											{/* Madera Barnizada */}
+											{dimensions && processedWoodMask && woodImg && (
 												<KonvaImage
 													image={processedWoodMask}
-													x={x}
-													y={y}
-													scaleX={scale}
-													scaleY={scale}
-													// globalCompositeOperation='overlay'
+													x={dimensions.x}
+													y={dimensions.y}
+													width={dimensions.width}
+													height={dimensions.height}
 													globalCompositeOperation='multiply'
-													opacity={0.92}
+													opacity={0.88}
 												/>
-											);
-										})()}
-									{processedMask &&
-										maskImg &&
-										(() => {
-											const scale = Math.min(
-												width / maskImg.width,
-												height / maskImg.height
-											);
-											const x = (width - maskImg.width * scale) / 2;
-											const y = (height - maskImg.height * scale) / 2;
-											return (
+											)}
+
+											{/* Tela */}
+											{dimensions && processedMask && maskImg && (
 												<KonvaImage
 													image={processedMask}
-													x={x}
-													y={y}
-													scaleX={scale}
-													scaleY={scale}
+													x={dimensions.x}
+													y={dimensions.y}
+													width={dimensions.width}
+													height={dimensions.height}
 													globalCompositeOperation='source-over'
 													opacity={0.95}
 												/>
-											);
-										})()}
-								</Layer>
-							</Stage>
-						</div>
-					</CardContent>
-				</Card>
+											)}
+										</Layer>
+									</Stage>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
 
-				{/* Controls */}
-				<Card>
-					<CardContent className='p-6 space-y-6'>
-						{/* Selector de Color de Tela */}
-						<div>
-							<Label className='text-base font-semibold mb-3 block'>
-								🎨 Color de la Tela
-							</Label>
-							<Select value={selectedColorId} onValueChange={handleColorSelect}>
-								<SelectTrigger className='w-full'>
-									<SelectValue>
-										{selectedColor && (
-											<div className='flex items-center gap-2'>
-												<div
-													className='w-4 h-4 rounded border'
-													style={{ backgroundColor: selectedColor.hex }}
-												/>
-												<span>{selectedColor.nombre}</span>
-											</div>
-										)}
-									</SelectValue>
-								</SelectTrigger>
-								<SelectContent>
-									{paletaConLab.map((color) => (
-										<SelectItem key={color.id} value={color.id}>
-											<div className='flex items-center gap-2'>
-												<div
-													className='w-4 h-4 rounded border'
-													style={{ backgroundColor: color.hex }}
-												/>
-												<span>{color.nombre}</span>
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<p className='text-sm text-muted-foreground mt-2 text-center'>
-								Seleccionado:{' '}
-								<span className='font-semibold'>{selectedColor.nombre}</span>
-								<code className='ml-2 px-2 py-0.5 bg-muted rounded text-xs'>
-									{selectedColor.hex}
-								</code>
-							</p>
+					{/* CONTROLES - DERECHA */}
+					<div className='order-2 lg:order-2 space-y-6'>
+						{/* SELECTOR DE MUEBLE */}
+						<Card className='shadow-soft'>
+							<CardHeader className='pb-3'>
+								<CardTitle className='text-lg sm:text-xl flex items-center gap-2'>
+									<Package className='w-5 h-5 text-primary' />
+									Selecciona el Mueble
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Select
+									value={selectedFurniture.id}
+									onValueChange={handleFurnitureSelect}
+								>
+									<SelectTrigger className='w-full'>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{FURNITURE_CATALOG.map((furniture) => (
+											<SelectItem key={furniture.id} value={furniture.id}>
+												{furniture.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</CardContent>
+						</Card>
+
+						{/* SELECTORES DE COLOR */}
+						<div className='grid sm:grid-cols-2 gap-4'>
+							{/* COLOR TELA */}
+							<Card className='shadow-soft'>
+								<CardHeader className='pb-3'>
+									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
+										<Palette className='w-4 h-4 text-primary' />
+										Tela
+									</CardTitle>
+								</CardHeader>
+								<CardContent className='space-y-3'>
+									<Select
+										value={selectedColorId}
+										onValueChange={handleColorSelect}
+									>
+										<SelectTrigger className='w-full'>
+											<SelectValue>
+												<div className='flex items-center gap-2'>
+													<div
+														className='w-4 h-4 rounded-full border'
+														style={{ backgroundColor: selectedColor.hex }}
+													/>
+													<span>{selectedColor.nombre}</span>
+												</div>
+											</SelectValue>
+										</SelectTrigger>
+										<SelectContent>
+											{paletaConLab.map((color) => (
+												<SelectItem key={color.id} value={color.id}>
+													<div className='flex items-center gap-2'>
+														<div
+															className='w-4 h-4 rounded-full border'
+															style={{ backgroundColor: color.hex }}
+														/>
+														<span>{color.nombre}</span>
+													</div>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<div className='text-center'>
+										<span className='text-xs text-muted-foreground'>
+											{selectedColor.hex}
+										</span>
+									</div>
+								</CardContent>
+							</Card>
+
+							{/* COLOR MADERA */}
+							<Card className='shadow-soft'>
+								<CardHeader className='pb-3'>
+									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
+										<Trees className='w-4 h-4 text-primary' />
+										Barniz Madera
+									</CardTitle>
+								</CardHeader>
+								<CardContent className='space-y-3'>
+									<Select
+										value={selectedWoodColorId}
+										onValueChange={handleWoodColorSelect}
+									>
+										<SelectTrigger className='w-full'>
+											<SelectValue>
+												<div className='flex items-center gap-2'>
+													<div
+														className='w-4 h-4 rounded-full border'
+														style={{ backgroundColor: selectedWoodColor.hex }}
+													/>
+													<span>{selectedWoodColor.nombre}</span>
+												</div>
+											</SelectValue>
+										</SelectTrigger>
+										<SelectContent>
+											{paletaMaderaConLab.map((color) => (
+												<SelectItem key={color.id} value={color.id}>
+													<div className='flex items-center gap-2'>
+														<div
+															className='w-4 h-4 rounded-full border'
+															style={{ backgroundColor: color.hex }}
+														/>
+														<span>{color.nombre}</span>
+													</div>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<div className='text-center'>
+										<span className='text-xs text-muted-foreground'>
+											{selectedWoodColor.hex}
+										</span>
+									</div>
+								</CardContent>
+							</Card>
 						</div>
 
-						{/* Selector de Color de Madera */}
-						<div className='border-t pt-4'>
-							<Label className='text-base font-semibold mb-3 block'>
-								🪵 Color del Barniz de Madera
-							</Label>
-							<Select
-								value={selectedWoodColorId}
-								onValueChange={handleWoodColorSelect}
-							>
-								<SelectTrigger className='w-full'>
-									<SelectValue>
-										{selectedWoodColor && (
-											<div className='flex items-center gap-2'>
-												<div
-													className='w-4 h-4 rounded border'
-													style={{ backgroundColor: selectedWoodColor.hex }}
-												/>
-												<span>{selectedWoodColor.nombre}</span>
-											</div>
-										)}
-									</SelectValue>
-								</SelectTrigger>
-								<SelectContent>
-									{paletaMaderaConLab.map((color) => (
-										<SelectItem key={color.id} value={color.id}>
-											<div className='flex items-center gap-2'>
-												<div
-													className='w-4 h-4 rounded border'
-													style={{ backgroundColor: color.hex }}
-												/>
-												<span>{color.nombre}</span>
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<p className='text-sm text-muted-foreground mt-2 text-center'>
-								Seleccionado:{' '}
-								<span className='font-semibold'>
-									{selectedWoodColor.nombre}
-								</span>
-								<code className='ml-2 px-2 py-0.5 bg-muted rounded text-xs'>
-									{selectedWoodColor.hex}
-								</code>
-							</p>
-						</div>
-					</CardContent>
-				</Card>
+						{/* BOTÓN DE PEDIDO */}
+						<Card className='shadow-soft'>
+							<CardContent className='pt-6'>
+								<button
+									onClick={handleCreateOrder}
+									className='w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 rounded-md py-4 px-6 font-semibold shadow-hover hover:shadow-lg'
+								>
+									<ShoppingCart className='w-5 h-5' />
+									<span className='text-base'>Hacer Pedido del Mueble</span>
+								</button>
+								<p className='text-xs text-muted-foreground text-center mt-3'>
+									Guarda tu configuración para generar una cotización
+								</p>
+							</CardContent>
+						</Card>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
 };
+
+// import React, {
+// 	useEffect,
+// 	useState,
+// 	useCallback,
+// 	useMemo,
+// 	useRef,
+// } from 'react';
+// import { Stage, Layer, Image as KonvaImage } from 'react-konva';
+// // import { Label } from '@/components/ui/label';
+// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Loader2, Palette, Trees, Package, ShoppingCart } from 'lucide-react';
+// import {
+// 	Select,
+// 	SelectContent,
+// 	SelectItem,
+// 	SelectTrigger,
+// 	SelectValue,
+// } from '@/components/ui/select';
+// import { COLORES_TELA } from '@/types/colors';
+// import { COLORES_MADERA } from '@/types/colors';
+// import type { Colores } from '@/types/colors';
+
+// interface ColorTelaWithLab extends Colores {
+// 	lab: { l: number; a: number; b: number };
+// }
+
+// // 🪑 INTERFACES PARA CATÁLOGO DE MUEBLES
+// interface CustomizableFurniture {
+// 	id: string;
+// 	name: string;
+// 	baseImageUrl: string;
+// 	maskImageUrl: string;
+// 	woodMaskImageUrl: string;
+// 	defaultColorId: string;
+// 	defaultWoodColorId: string;
+// }
+
+// interface InteractiveShowroomProps {
+// 	className?: string;
+// }
+
+// // 📦 CATÁLOGO DE MUEBLES - REEMPLAZA LAS URLS POR TUS ASSETS
+// const FURNITURE_CATALOG: CustomizableFurniture[] = [
+// 	{
+// 		id: 'silla-dining',
+// 		name: 'Silla Comedor',
+// 		baseImageUrl: '/src/assets/base_neutra.png',
+// 		maskImageUrl: '/src/assets/mascara_sillas_rango_completo_2.png',
+// 		woodMaskImageUrl: '/src/assets/mascara_madera_rango_completo.png',
+// 		defaultColorId: 'beige',
+// 		defaultWoodColorId: 'natural',
+// 	},
+// 	// ✅ PLACEHOLDERS - AGREGA TUS 9 MUEBLES RESTANTES
+// 	{
+// 		id: 'sofa-3p',
+// 		name: 'Sofá 3 Plazas',
+// 		baseImageUrl: '/src/assets/placeholders/sofa-base.jpg',
+// 		maskImageUrl: '/src/assets/placeholders/sofa-fabric-mask.png',
+// 		woodMaskImageUrl: '/src/assets/placeholders/sofa-wood-mask.png',
+// 		defaultColorId: 'gris',
+// 		defaultWoodColorId: 'nogal',
+// 	},
+// 	{
+// 		id: 'mesa-centro',
+// 		name: 'Mesa de Centro',
+// 		baseImageUrl: '/src/assets/placeholders/mesa-base.jpg',
+// 		maskImageUrl: '/src/assets/placeholders/mesa-fabric-mask.png',
+// 		woodMaskImageUrl: '/src/assets/placeholders/mesa-wood-mask.png',
+// 		defaultColorId: 'crudo',
+// 		defaultWoodColorId: 'miel',
+// 	},
+// 	// ... Agrega hasta 10 muebles
+// ];
+
+// export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
+// 	className = '',
+// }) => {
+// 	// 🎯 ESTADO DEL MUEBLE SELECCIONADO
+// 	const [selectedFurniture, setSelectedFurniture] =
+// 		useState<CustomizableFurniture>(FURNITURE_CATALOG[0]);
+// 	const [selectedColorId, setSelectedColorId] = useState(
+// 		FURNITURE_CATALOG[0].defaultColorId
+// 	);
+// 	const [selectedWoodColorId, setSelectedWoodColorId] = useState(
+// 		FURNITURE_CATALOG[0].defaultWoodColorId
+// 	);
+
+// 	const [loading, setLoading] = useState(true);
+// 	const [error, setError] = useState<string | null>(null);
+// 	const [processedMask, setProcessedMask] = useState<HTMLCanvasElement | null>(
+// 		null
+// 	);
+// 	const [processedWoodMask, setProcessedWoodMask] =
+// 		useState<HTMLCanvasElement | null>(null);
+
+// 	const [baseImg, setBaseImg] = useState<HTMLImageElement | null>(null);
+// 	const [maskImg, setMaskImg] = useState<HTMLImageElement | null>(null);
+// 	const [woodImg, setWoodImg] = useState<HTMLImageElement | null>(null);
+
+// 	const isMounted = useRef(true);
+
+// 	const loadImage = useCallback(
+// 		async (url: string): Promise<HTMLImageElement> => {
+// 			return new Promise((resolve, reject) => {
+// 				const img = new Image();
+// 				// ⚠️ IMPORTANTE: Para producción, usa un proxy o sirve imágenes desde el mismo origen
+// 				img.crossOrigin = 'anonymous';
+// 				img.onload = () => resolve(img);
+// 				img.onerror = (e) => reject(e);
+// 				img.src = url;
+// 			});
+// 		},
+// 		[]
+// 	);
+
+// 	// 🔬 ESPACIO COLOR LAB (igual que antes)
+// 	const rgbToXyz = useCallback((r: number, g: number, b: number) => {
+// 		r = r / 255;
+// 		g = g / 255;
+// 		b = b / 255;
+// 		r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+// 		g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+// 		b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+// 		r *= 100;
+// 		g *= 100;
+// 		b *= 100;
+// 		const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+// 		const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+// 		const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+// 		return { x, y, z };
+// 	}, []);
+
+// 	const xyzToLab = useCallback((x: number, y: number, z: number) => {
+// 		x /= 95.047;
+// 		y /= 100.0;
+// 		z /= 108.883;
+// 		x = x > 0.008856 ? Math.pow(x, 1 / 3) : 7.787 * x + 16 / 116;
+// 		y = y > 0.008856 ? Math.pow(y, 1 / 3) : 7.787 * y + 16 / 116;
+// 		z = z > 0.008856 ? Math.pow(z, 1 / 3) : 7.787 * z + 16 / 116;
+// 		const l = 116 * y - 16;
+// 		const a = 500 * (x - y);
+// 		const b = 200 * (y - z);
+// 		return { l, a, b };
+// 	}, []);
+
+// 	const labToXyz = useCallback((l: number, a: number, b: number) => {
+// 		let y = (l + 16) / 116;
+// 		let x = a / 500 + y;
+// 		let z = y - b / 200;
+// 		x = x > 0.206897 ? Math.pow(x, 3) : (x - 16 / 116) / 7.787;
+// 		y = y > 0.206897 ? Math.pow(y, 3) : (y - 16 / 116) / 7.787;
+// 		z = z > 0.206897 ? Math.pow(z, 3) : (z - 16 / 116) / 7.787;
+// 		x *= 95.047;
+// 		y *= 100.0;
+// 		z *= 108.883;
+// 		return { x, y, z };
+// 	}, []);
+
+// 	const xyzToRgb = useCallback((x: number, y: number, z: number) => {
+// 		x /= 100;
+// 		y /= 100;
+// 		z /= 100;
+// 		let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+// 		let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+// 		let b = x * 0.0557 + y * -0.204 + z * 1.057;
+// 		r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+// 		g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+// 		b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+// 		r = Math.max(0, Math.min(1, r)) * 255;
+// 		g = Math.max(0, Math.min(1, g)) * 255;
+// 		b = Math.max(0, Math.min(1, b)) * 255;
+// 		return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+// 	}, []);
+
+// 	const rgbToLab = useCallback(
+// 		(r: number, g: number, b: number) => {
+// 			const xyz = rgbToXyz(r, g, b);
+// 			return xyzToLab(xyz.x, xyz.y, xyz.z);
+// 		},
+// 		[rgbToXyz, xyzToLab]
+// 	);
+
+// 	const paletaConLab: ColorTelaWithLab[] = useMemo(() => {
+// 		return COLORES_TELA.map((color) => ({
+// 			...color,
+// 			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
+// 		}));
+// 	}, [rgbToLab]);
+
+// 	const paletaMaderaConLab: ColorTelaWithLab[] = useMemo(() => {
+// 		return COLORES_MADERA.map((color) => ({
+// 			...color,
+// 			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
+// 		}));
+// 	}, [rgbToLab]);
+
+// 	const selectedColor = useMemo(
+// 		() => paletaConLab.find((c) => c.id === selectedColorId) || paletaConLab[0],
+// 		[selectedColorId, paletaConLab]
+// 	);
+
+// 	const selectedWoodColor = useMemo(
+// 		() =>
+// 			paletaMaderaConLab.find((c) => c.id === selectedWoodColorId) ||
+// 			paletaMaderaConLab[0],
+// 		[selectedWoodColorId, paletaMaderaConLab]
+// 	);
+
+// 	// 🪵 PROCESAMIENTO DE MADERA CON BARNIZ REALISTA
+// 	const processMaskWithPalette = useCallback(
+// 		(
+// 			maskImage: HTMLImageElement | null,
+// 			colorTela: ColorTelaWithLab,
+// 			materialType: 'fabric' | 'wood'
+// 		): HTMLCanvasElement | null => {
+// 			if (!maskImage || !colorTela.lab) return null;
+
+// 			const canvas = document.createElement('canvas');
+// 			canvas.width = maskImage.width;
+// 			canvas.height = maskImage.height;
+// 			const ctx = canvas.getContext('2d', { willReadFrequently: true });
+// 			if (!ctx) return null;
+
+// 			ctx.drawImage(maskImage, 0, 0);
+// 			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+// 			const pixels = imageData.data;
+
+// 			const targetLab = colorTela.lab;
+
+// 			// 🔧 PARÁMETROS MATERIAL-ESPECÍFICOS
+// 			const colorIntensity = materialType === 'wood' ? 0.68 : 0.92;
+// 			const contrastBoost = materialType === 'wood' ? 1.25 : 1.0;
+// 			const saturationFactor = materialType === 'wood' ? 1.15 : 1.1;
+
+// 			// Primera pasada: Aplicar color base + textura
+// 			for (let i = 0; i < pixels.length; i += 4) {
+// 				const alpha = pixels[i + 3];
+// 				if (alpha < 30) {
+// 					pixels[i + 3] = 0;
+// 					continue;
+// 				}
+
+// 				const r = pixels[i];
+// 				const g = pixels[i + 1];
+// 				const b = pixels[i + 2];
+
+// 				// Extraer luminosidad de la máscara (textura)
+// 				const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
+// 				const maskL = (luminosity / 255) * 100;
+
+// 				// Mapear luminosidad al rango del color target
+// 				const targetLMin = Math.max(0, targetLab.l - 18);
+// 				const targetLMax = Math.min(100, targetLab.l + 22);
+// 				const adjustedL =
+// 					targetLMin + (maskL / 100) * (targetLMax - targetLMin);
+
+// 				// Factor de mezcla basado en alpha
+// 				const blendFactor = (alpha / 255) * colorIntensity;
+
+// 				// Aplicar color LAB
+// 				const finalL = adjustedL * blendFactor + maskL * (1 - blendFactor);
+// 				const finalA = targetLab.a * blendFactor;
+// 				const finalB = targetLab.b * blendFactor;
+
+// 				const finalRgb = xyzToRgb(
+// 					...Object.values(labToXyz(finalL, finalA, finalB))
+// 				);
+
+// 				pixels[i] = finalRgb.r;
+// 				pixels[i + 1] = finalRgb.g;
+// 				pixels[i + 2] = finalRgb.b;
+// 				pixels[i + 3] = Math.max(0, alpha - 6);
+// 			}
+
+// 			// Segunda pasada: Post-procesamiento específico
+// 			if (materialType === 'wood') {
+// 				// 🌟 BARNIZ: Realce de vetas + brillo especular
+// 				for (let i = 0; i < pixels.length; i += 4) {
+// 					if (pixels[i + 3] === 0) continue;
+
+// 					let r = pixels[i];
+// 					let g = pixels[i + 1];
+// 					let b = pixels[i + 2];
+
+// 					// Realce de contraste para vetas
+// 					const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
+// 					const contrasted = (luminosity - 128) * contrastBoost + 128;
+// 					const delta = contrasted - luminosity;
+
+// 					// Añadir brillo especular (simula reflejo de luz)
+// 					const glossIntensity = 0.85 + (luminosity / 255) * 0.15;
+// 					const warmth = 1.06; // Tonos cálidos de barniz
+
+// 					r = Math.min(255, (r + delta) * glossIntensity * warmth);
+// 					g = Math.min(255, (g + delta) * glossIntensity);
+// 					b = Math.min(255, (b + delta) * glossIntensity * warmth * 0.95);
+
+// 					// Saturación final para "pop" de color
+// 					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+// 					pixels[i] = Math.min(255, gray + saturationFactor * (r - gray));
+// 					pixels[i + 1] = Math.min(255, gray + saturationFactor * (g - gray));
+// 					pixels[i + 2] = Math.min(255, gray + saturationFactor * (b - gray));
+// 				}
+// 			} else {
+// 				// Tela: Suavizado final
+// 				for (let i = 0; i < pixels.length; i += 4) {
+// 					if (pixels[i + 3] === 0) continue;
+// 					const r = pixels[i];
+// 					const g = pixels[i + 1];
+// 					const b = pixels[i + 2];
+// 					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+// 					pixels[i] = Math.min(255, gray + saturationFactor * (r - gray));
+// 					pixels[i + 1] = Math.min(255, gray + saturationFactor * (g - gray));
+// 					pixels[i + 2] = Math.min(255, gray + saturationFactor * (b - gray));
+// 				}
+// 			}
+
+// 			ctx.putImageData(imageData, 0, 0);
+// 			return canvas;
+// 		},
+// 		[xyzToRgb, labToXyz]
+// 	);
+
+// 	// 🔄 CARGA DE IMÁGENES CON CLEANUP
+// 	useEffect(() => {
+// 		isMounted.current = true;
+// 		const loadAllImages = async () => {
+// 			try {
+// 				setLoading(true);
+// 				setError(null);
+
+// 				const [base, mask, wood] = await Promise.all([
+// 					loadImage(selectedFurniture.baseImageUrl),
+// 					loadImage(selectedFurniture.maskImageUrl),
+// 					loadImage(selectedFurniture.woodMaskImageUrl),
+// 				]);
+
+// 				if (!isMounted.current) return;
+
+// 				setBaseImg(base);
+// 				setMaskImg(mask);
+// 				setWoodImg(wood);
+// 				setLoading(false);
+// 			} catch (err) {
+// 				if (!isMounted.current) return;
+// 				console.error('Error loading images:', err);
+// 				setError('Error al cargar las imágenes. Verifica las URLs.');
+// 				setLoading(false);
+// 			}
+// 		};
+
+// 		// Resetear estados al cambiar de mueble
+// 		setProcessedMask(null);
+// 		setProcessedWoodMask(null);
+// 		setBaseImg(null);
+// 		setMaskImg(null);
+// 		setWoodImg(null);
+// 		loadAllImages();
+
+// 		return () => {
+// 			isMounted.current = false;
+// 		};
+// 	}, [selectedFurniture, loadImage]);
+
+// 	const processMask = useCallback(
+// 		() => processMaskWithPalette(maskImg, selectedColor, 'fabric'),
+// 		[maskImg, selectedColor, processMaskWithPalette]
+// 	);
+
+// 	const processWoodMask = useCallback(
+// 		() => processMaskWithPalette(woodImg, selectedWoodColor, 'wood'),
+// 		[woodImg, selectedWoodColor, processMaskWithPalette]
+// 	);
+
+// 	useEffect(() => {
+// 		if (baseImg && maskImg) {
+// 			setProcessedMask(processMask());
+// 		}
+// 	}, [baseImg, maskImg, selectedColorId, processMask]);
+
+// 	useEffect(() => {
+// 		if (baseImg && woodImg) {
+// 			setProcessedWoodMask(processWoodMask());
+// 		}
+// 	}, [baseImg, woodImg, selectedWoodColorId, processWoodMask]);
+
+// 	const handleFurnitureSelect = (furnitureId: string) => {
+// 		const furniture = FURNITURE_CATALOG.find((f) => f.id === furnitureId);
+// 		if (!furniture) return;
+// 		setSelectedFurniture(furniture);
+// 		setSelectedColorId(furniture.defaultColorId);
+// 		setSelectedWoodColorId(furniture.defaultWoodColorId);
+// 	};
+
+// 	const handleColorSelect = (colorId: string) => {
+// 		setSelectedColorId(colorId);
+// 	};
+
+// 	const handleWoodColorSelect = (colorId: string) => {
+// 		setSelectedWoodColorId(colorId);
+// 	};
+
+// 	// 💾 GENERAR ORDEN (PLACEHOLDER)
+// 	const handleCreateOrder = () => {
+// 		const orderData = {
+// 			furniture: selectedFurniture.name,
+// 			fabricColor: selectedColor.nombre,
+// 			woodColor: selectedWoodColor.nombre,
+// 			timestamp: new Date().toISOString(),
+// 		};
+// 		console.log('🛒 Orden generada:', orderData);
+// 		// Aquí iría la lógica para abrir modal, enviar a WhatsApp, etc.
+// 		alert(
+// 			`Orden generada para: ${selectedFurniture.name}\nTela: ${selectedColor.nombre}\nMadera: ${selectedWoodColor.nombre}`
+// 		);
+// 	};
+
+// 	if (loading) {
+// 		return (
+// 			<div className='min-h-screen flex items-center justify-center'>
+// 				<Card className={className}>
+// 					<CardContent className='flex items-center justify-center h-96 p-6'>
+// 						<div className='flex flex-col items-center gap-4'>
+// 							<Loader2 className='h-8 w-8 animate-spin text-primary' />
+// 							<p className='text-muted-foreground'>
+// 								Cargando personalizador...
+// 							</p>
+// 						</div>
+// 					</CardContent>
+// 				</Card>
+// 			</div>
+// 		);
+// 	}
+
+// 	if (error) {
+// 		return (
+// 			<div className='min-h-screen flex items-center justify-center'>
+// 				<Card className={className}>
+// 					<CardContent className='flex items-center justify-center h-96 p-6'>
+// 						<div className='text-center'>
+// 							<p className='text-destructive font-semibold mb-2'>⚠️ {error}</p>
+// 							<p className='text-sm text-muted-foreground'>
+// 								Verifica que las imágenes existan en la carpeta assets
+// 							</p>
+// 						</div>
+// 					</CardContent>
+// 				</Card>
+// 			</div>
+// 		);
+// 	}
+
+// 	const canvasWidth =
+// 		typeof window !== 'undefined' && window.innerWidth < 768 ? 350 : 600;
+// 	const canvasHeight =
+// 		typeof window !== 'undefined' && window.innerWidth < 768 ? 350 : 450;
+
+// 	return (
+// 		<div
+// 			className={`min-h-screen bg-background py-8 sm:py-12 md:py-16 ${className}`}
+// 		>
+// 			{/* TÍTULO */}
+// 			<div className='container mx-auto px-4 sm:px-6'>
+// 				<div className='text-center mb-8 sm:mb-10 md:mb-12'>
+// 					<h2 className='text-3xl sm:text-4xl md:text-5xl font-serif-display font-bold mb-3 text-foreground'>
+// 						Personaliza tu Mueble
+// 					</h2>
+// 					<p className='text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto'>
+// 						Selecciona el mueble y juega con los colores hasta encontrar tu
+// 						combinación perfecta
+// 					</p>
+// 				</div>
+
+// 				{/* GRID PRINCIPAL */}
+// 				<div className='grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start max-w-7xl mx-auto'>
+// 					{/* CANVAS - IZQUIERDA */}
+// 					<div className='order-1 lg:order-1'>
+// 						<Card className='shadow-soft hover:shadow-hover transition-all duration-300'>
+// 							<CardContent className='p-4 sm:p-6 flex justify-center'>
+// 								<div className='relative rounded-lg bg-muted overflow-hidden'>
+// 									<Stage
+// 										width={canvasWidth}
+// 										height={canvasHeight}
+// 										className='max-w-full h-auto'
+// 									>
+// 										<Layer>
+// 											{/* Imagen Base */}
+// 											{baseImg &&
+// 												(() => {
+// 													const scale = Math.min(
+// 														canvasWidth / baseImg.width,
+// 														canvasHeight / baseImg.height
+// 													);
+// 													const x = (canvasWidth - baseImg.width * scale) / 2;
+// 													const y = (canvasHeight - baseImg.height * scale) / 2;
+// 													return (
+// 														<KonvaImage
+// 															image={baseImg}
+// 															x={x}
+// 															y={y}
+// 															scaleX={scale}
+// 															scaleY={scale}
+// 														/>
+// 													);
+// 												})()}
+
+// 											{/* Madera Barnizada */}
+// 											{processedWoodMask &&
+// 												woodImg &&
+// 												(() => {
+// 													const scale = Math.min(
+// 														canvasWidth / woodImg.width,
+// 														canvasHeight / woodImg.height
+// 													);
+// 													const x = (canvasWidth - woodImg.width * scale) / 2;
+// 													const y = (canvasHeight - woodImg.height * scale) / 2;
+// 													return (
+// 														<KonvaImage
+// 															image={processedWoodMask}
+// 															x={x}
+// 															y={y}
+// 															scaleX={scale}
+// 															scaleY={scale}
+// 															globalCompositeOperation='multiply'
+// 															opacity={0.88}
+// 														/>
+// 													);
+// 												})()}
+
+// 											{/* Tela */}
+// 											{processedMask &&
+// 												maskImg &&
+// 												(() => {
+// 													const scale = Math.min(
+// 														canvasWidth / maskImg.width,
+// 														canvasHeight / maskImg.height
+// 													);
+// 													const x = (canvasWidth - maskImg.width * scale) / 2;
+// 													const y = (canvasHeight - maskImg.height * scale) / 2;
+// 													return (
+// 														<KonvaImage
+// 															image={processedMask}
+// 															x={x}
+// 															y={y}
+// 															scaleX={scale}
+// 															scaleY={scale}
+// 															globalCompositeOperation='source-over'
+// 															opacity={0.95}
+// 														/>
+// 													);
+// 												})()}
+// 										</Layer>
+// 									</Stage>
+// 								</div>
+// 							</CardContent>
+// 						</Card>
+// 					</div>
+
+// 					{/* CONTROLES - DERECHA */}
+// 					<div className='order-2 lg:order-2 space-y-6'>
+// 						{/* SELECTOR DE MUEBLE */}
+// 						<Card className='shadow-soft'>
+// 							<CardHeader className='pb-3'>
+// 								<CardTitle className='text-lg sm:text-xl flex items-center gap-2'>
+// 									<Package className='w-5 h-5 text-primary' />
+// 									Selecciona el Mueble
+// 								</CardTitle>
+// 							</CardHeader>
+// 							<CardContent>
+// 								<Select
+// 									value={selectedFurniture.id}
+// 									onValueChange={handleFurnitureSelect}
+// 								>
+// 									<SelectTrigger className='w-full'>
+// 										<SelectValue />
+// 									</SelectTrigger>
+// 									<SelectContent>
+// 										{FURNITURE_CATALOG.map((furniture) => (
+// 											<SelectItem key={furniture.id} value={furniture.id}>
+// 												{furniture.name}
+// 											</SelectItem>
+// 										))}
+// 									</SelectContent>
+// 								</Select>
+// 							</CardContent>
+// 						</Card>
+
+// 						{/* SELECTOR DE COLORES */}
+// 						<div className='grid sm:grid-cols-2 gap-4'>
+// 							{/* COLOR TELA */}
+// 							<Card className='shadow-soft'>
+// 								<CardHeader className='pb-3'>
+// 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
+// 										<Palette className='w-4 h-4 text-primary' />
+// 										Tela
+// 									</CardTitle>
+// 								</CardHeader>
+// 								<CardContent className='space-y-3'>
+// 									<Select
+// 										value={selectedColorId}
+// 										onValueChange={handleColorSelect}
+// 									>
+// 										<SelectTrigger className='w-full'>
+// 											<SelectValue>
+// 												<div className='flex items-center gap-2'>
+// 													<div
+// 														className='w-4 h-4 rounded-full border'
+// 														style={{ backgroundColor: selectedColor.hex }}
+// 													/>
+// 													<span>{selectedColor.nombre}</span>
+// 												</div>
+// 											</SelectValue>
+// 										</SelectTrigger>
+// 										<SelectContent>
+// 											{paletaConLab.map((color) => (
+// 												<SelectItem key={color.id} value={color.id}>
+// 													<div className='flex items-center gap-2'>
+// 														<div
+// 															className='w-4 h-4 rounded-full border'
+// 															style={{ backgroundColor: color.hex }}
+// 														/>
+// 														<span>{color.nombre}</span>
+// 													</div>
+// 												</SelectItem>
+// 											))}
+// 										</SelectContent>
+// 									</Select>
+// 									<div className='text-center'>
+// 										<span className='text-xs text-muted-foreground'>
+// 											{selectedColor.hex}
+// 										</span>
+// 									</div>
+// 								</CardContent>
+// 							</Card>
+
+// 							{/* COLOR MADERA */}
+// 							<Card className='shadow-soft'>
+// 								<CardHeader className='pb-3'>
+// 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
+// 										<Trees className='w-4 h-4 text-primary' />
+// 										Barniz Madera
+// 									</CardTitle>
+// 								</CardHeader>
+// 								<CardContent className='space-y-3'>
+// 									<Select
+// 										value={selectedWoodColorId}
+// 										onValueChange={handleWoodColorSelect}
+// 									>
+// 										<SelectTrigger className='w-full'>
+// 											<SelectValue>
+// 												<div className='flex items-center gap-2'>
+// 													<div
+// 														className='w-4 h-4 rounded-full border'
+// 														style={{ backgroundColor: selectedWoodColor.hex }}
+// 													/>
+// 													<span>{selectedWoodColor.nombre}</span>
+// 												</div>
+// 											</SelectValue>
+// 										</SelectTrigger>
+// 										<SelectContent>
+// 											{paletaMaderaConLab.map((color) => (
+// 												<SelectItem key={color.id} value={color.id}>
+// 													<div className='flex items-center gap-2'>
+// 														<div
+// 															className='w-4 h-4 rounded-full border'
+// 															style={{ backgroundColor: color.hex }}
+// 														/>
+// 														<span>{color.nombre}</span>
+// 													</div>
+// 												</SelectItem>
+// 											))}
+// 										</SelectContent>
+// 									</Select>
+// 									<div className='text-center'>
+// 										<span className='text-xs text-muted-foreground'>
+// 											{selectedWoodColor.hex}
+// 										</span>
+// 									</div>
+// 								</CardContent>
+// 							</Card>
+// 						</div>
+
+// 						{/* BOTÓN DE PEDIDO */}
+// 						<Card className='shadow-soft'>
+// 							<CardContent className='pt-6'>
+// 								<button
+// 									onClick={handleCreateOrder}
+// 									className='w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 rounded-md py-4 px-6 font-semibold shadow-hover hover:shadow-lg'
+// 								>
+// 									<ShoppingCart className='w-5 h-5' />
+// 									<span className='text-base'>Hacer Pedido del Mueble</span>
+// 								</button>
+// 								<p className='text-xs text-muted-foreground text-center mt-3'>
+// 									Guarda tu configuración para generar una cotización
+// 								</p>
+// 							</CardContent>
+// 						</Card>
+// 					</div>
+// 				</div>
+// 			</div>
+// 		</div>
+// 	);
+// };
