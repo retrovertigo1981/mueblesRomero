@@ -23,7 +23,6 @@ type AppRoute = RouteObject & {
 };
 
 const fetchProducts: () => Promise<CleanProduct[]> = async () => {
-	// const response = await fetch('http://localhost:8881/wp-json/wp/v2/productos');
 	const response = await fetch('https://api.muebleselromero.cl/wp-json/wp/v2/productos');
 	if (!response.ok) {
 		throw new Error(`Error al obtener los productos: ${response.status}`);

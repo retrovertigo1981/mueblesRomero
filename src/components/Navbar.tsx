@@ -16,7 +16,7 @@ export const Navbar = () => {
 							/>
 						</div>
 						<span className='text-xl font-semibold text-foreground font-serif-display'>
-							Muebles Romero
+							Muebles El Romero
 						</span>
 					</Link>
 
