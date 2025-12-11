@@ -7,11 +7,11 @@ interface IProductAcfBase {
 }
 
 export interface ProductApi {
-	id: number;
-	title: {
-		rendered: string;
-	};
-	acf: IProductAcfBase;
+  id: number;
+  title: {
+    rendered: string;
+  };
+  acf: IProductAcfBase;
 }
 
 interface IProductAcfDetail extends IProductAcfBase {
@@ -23,19 +23,19 @@ interface IProductAcfDetail extends IProductAcfBase {
 }
 
 export interface ProductDetailApi extends ProductApi {
-  
-  acf: IProductAcfDetail; 
+  acf: IProductAcfDetail;
 }
 
 export interface CleanProduct {
-	id: number;
-	title: string;
-	price: string;
-	category: string;
-	image: string;
+  id: number;
+  title: string;
+  price: string;
+  category: string;
+  image: string;
 }
 
 export interface CleanProductDetail extends CleanProduct {
+  details: string;
   description: string;
   dimensions: string;
   material: string;
@@ -47,7 +47,6 @@ export const cleanDataSingleProduct = (
   item: ProductDetailApi
 ): CleanProductDetail => {
   return {
-    
     id: item.id,
     title: item.title.rendered,
     price: item.acf.price,
@@ -70,9 +69,3 @@ export const cleanDataProducts = (dataApi: ProductApi[]): CleanProduct[] => {
     image: item.acf.image,
   }));
 };
-
-
-
-
-
-
