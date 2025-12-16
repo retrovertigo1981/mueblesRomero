@@ -1,0 +1,115 @@
+# Configuración de seguridad para Hostinger
+# Muebles Romero - Configuración de producción
+
+# Habilitar compresión
+<IfModule mod_deflate.c>
+    # Comprimir archivos de texto
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    # Prevenir MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Prevenir clickjacking
+    Header always set X-Frame-Options "DENY"
+    
+    # Protección XSS
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Permissions Policy
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    
+    # HSTS (HTTP Strict Transport Security)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    
+    # CSP (Content Security Policy)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    
+    # Cache control para assets estáticos
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    
+    # Cache control para HTML
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "public, max-age=3600, must-revalidate"
+    </FilesMatch>
+    
+    # Remover headers innecesarios
+    Header unset X-Powered-By
+    Header unset Server
+</IfModule>
+
+# Prevenir acceso a archivos sensibles
+<FilesMatch "\.(env|log|sql|bak|backup|old|tmp|temp)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Prevenir acceso a directorios
+Options -Indexes
+
+# Prevenir acceso a archivos de configuración
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Redirección HTTPS (descomentar si tienes SSL)
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# SPA Routing - Redirigir todas las rutas a index.html
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Manejar archivos existentes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Redirigir a index.html para SPA
+    RewriteRule . /index.html [L]
+</IfModule>
+
+# Configuración de MIME types
+<IfModule mod_mime.c>
+    # Fuentes web
+    AddType application/font-woff .woff
+    AddType application/font-woff2 .woff2
+    AddType application/vnd.ms-fontobject .eot
+    AddType font/ttf .ttf
+    
+    # Archivos de aplicación
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType application/json .json
+</IfModule>
+
+# Configuración de límites
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value memory_limit 128M
+    php_value max_execution_time 300
+    php_value max_input_vars 3000
+</IfModule>
+
+# Logs de error personalizados
+ErrorLog /home/mueblesromero/logs/error.log
+LogLevel warn
