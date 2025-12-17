@@ -61,7 +61,7 @@ export const ProductDetail = ({ product }: ProductDetailProps) => {
 								{product.title}
 							</h1>
 							<p className='text-4xl font-bold text-primary mt-4'>
-								{product.price}
+								{`$ ${product.price}`}
 							</p>
 						</div>
 

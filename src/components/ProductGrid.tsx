@@ -71,7 +71,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 										{product.title}
 									</h3>
 									<p className='text-2xl font-bold text-primary mt-2'>
-										{product.price}
+										{`$ ${product.price}`}
 									</p>
 								</div>
 								<Button
