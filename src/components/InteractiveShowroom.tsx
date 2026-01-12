@@ -5,6 +5,7 @@ import React, {
 	useMemo,
 	useRef,
 } from 'react';
+import { useNavigate } from 'react-router';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Palette, Trees, Package, ShoppingCart } from 'lucide-react';
@@ -26,6 +27,10 @@ interface ColorTelaWithLab extends Colores {
 interface CustomizableFurniture {
 	id: string;
 	name: string;
+	description: string;
+	dimensions: string;
+	materials: string;
+	warranty: string;
 	baseImageUrl: string;
 	maskFabricImageUrl: string;
 	tableTopMaskImageUrl: string;
@@ -43,7 +48,12 @@ interface InteractiveShowroomProps {
 const FURNITURE_CATALOG: CustomizableFurniture[] = [
 	{
 		id: 'comedor-1',
-		name: 'Comedor 1',
+		name: 'Comedor 150 x 85 + 4 Sillas Italia + 1 Banqueta 120 cm',
+		description:
+			'Cubierta madera con vidrio. Madera pino seco en horno – tela lino. Incluye traslado en Santiago.',
+		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
+		materials: 'Madera pino seco en horno, tela lino, vidrio',
+		warranty: '1 año',
 		baseImageUrl: 'src/assets/comedor_1_gemini_upscayl_4x.png',
 		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_1.png',
 		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_1.png',
@@ -54,7 +64,12 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 	},
 	{
 		id: 'comedor-2',
-		name: 'Comedor 2',
+		name: 'Comedor 150 x 85 + 4 Sillas Oporto + 1 Banqueta 120 cm',
+		description:
+			'Cubierta madera con vidrio. Madera pino seco en horno – tela lino. Incluye traslado en Santiago.',
+		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
+		materials: 'Madera pino seco en horno, tela lino, vidrio',
+		warranty: '1 año',
 		baseImageUrl: 'src/assets/comedor_2_gemini_upscayl_4x.png',
 		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_2.png',
 		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_2.png',
@@ -68,6 +83,8 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	className = '',
 }) => {
+	const navigate = useNavigate();
+
 	// Check for browser compatibility
 	useEffect(() => {
 		const isBrave = navigator.userAgent.includes('Brave');
@@ -107,6 +124,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [tableTopImg, setTableTopImg] = useState<HTMLImageElement | null>(null);
 
 	const isMounted = useRef(true);
+	const stageRef = useRef<any>(null);
 
 	const loadImage = useCallback(
 		async (url: string): Promise<HTMLImageElement> => {
@@ -249,10 +267,10 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			const targetLab = colorTela.lab;
 
 			// ⭐ PARÁMETROS OPTIMIZADOS PARA MAYOR INTENSIDAD DE COLOR
-			const colorIntensity = materialType === 'wood' ? 0.88 : 0.92;
-			const contrastBoost = materialType === 'wood' ? 1.18 : 1.0;
-			const saturationFactor = materialType === 'wood' ? 1.22 : 1.1;
-			const colorBoost = materialType === 'wood' ? 1.15 : 1.0;
+			const colorIntensity = materialType === 'wood' ? 0.95 : 0.92;
+			const contrastBoost = materialType === 'wood' ? 1.25 : 1.0;
+			const saturationFactor = materialType === 'wood' ? 1.3 : 1.1;
+			const colorBoost = materialType === 'wood' ? 1.2 : 1.0;
 
 			// ============ FASE 1: APLICACIÓN DE COLOR BASE ============
 			for (let i = 0; i < pixels.length; i += 4) {
@@ -273,18 +291,26 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				const isLightColor = targetLab.l > 60;
 				const rangeFactor = isLightColor ? 1.3 : 1.0;
 
-				const targetLMin = Math.max(0, targetLab.l - 18 * rangeFactor);
-				const targetLMax = Math.min(100, targetLab.l + 22 * rangeFactor);
+				const targetLMin = Math.max(0, targetLab.l - 20 * rangeFactor);
+				const targetLMax = Math.min(100, targetLab.l + 15 * rangeFactor);
 				const adjustedL =
 					targetLMin + (maskL / 100) * (targetLMax - targetLMin);
 
 				const blendFactor = (alpha / 255) * colorIntensity;
 
 				// 🆕 APLICAR COLOR BOOST
-				const finalL =
+				let finalL =
 					adjustedL * blendFactor * colorBoost + maskL * (1 - blendFactor);
-				const finalA = targetLab.a * blendFactor * colorBoost;
-				const finalB = targetLab.b * blendFactor * colorBoost;
+				let finalA = targetLab.a * blendFactor * colorBoost;
+				let finalB = targetLab.b * blendFactor * colorBoost;
+
+				// 🆕 OSCURECER PARA MADERA
+				if (materialType === 'wood') {
+					const darkeningFactor = 0.85;
+					finalL *= darkeningFactor;
+					finalA *= darkeningFactor;
+					finalB *= darkeningFactor;
+				}
 
 				const { x, y, z } = labToXyz(finalL, finalA, finalB);
 				const finalRgb = xyzToRgb(x, y, z);
@@ -308,12 +334,12 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 					const contrasted = (luminosity - 128) * contrastBoost + 128;
 					const delta = contrasted - luminosity;
 
-					const glossIntensity = 0.88 + (luminosity / 255) * 0.12;
-					const warmth = 1.04;
+					const glossIntensity = 0.75 + (luminosity / 255) * 0.1;
+					const warmth = 1.0;
 
-					r = Math.min(255, (r + delta * 0.7) * glossIntensity * warmth);
-					g = Math.min(255, (g + delta * 0.7) * glossIntensity);
-					b = Math.min(255, (b + delta * 0.7) * glossIntensity * warmth * 0.96);
+					r = Math.min(255, (r + delta * 0.5) * glossIntensity * warmth);
+					g = Math.min(255, (g + delta * 0.5) * glossIntensity);
+					b = Math.min(255, (b + delta * 0.5) * glossIntensity * warmth * 0.96);
 
 					const gray = 0.299 * r + 0.587 * g + 0.114 * b;
 					pixels[i] = Math.min(255, gray + saturationFactor * (r - gray));
@@ -503,17 +529,29 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	};
 
 	const handleCreateOrder = () => {
-		const orderData = {
-			furniture: selectedFurniture.name,
-			fabricColor: selectedColor.nombre,
-			woodColor: selectedWoodColor.nombre,
-			tableTopColor: selectedTableTopColor.nombre,
-			timestamp: new Date().toISOString(),
+		// Capture canvas image as compressed JPEG to stay under EmailJS 50KB limit
+		const dataURL = stageRef.current?.toDataURL({
+			width: 200,
+			height: 200,
+			mimeType: 'image/jpeg',
+			quality: 0.6,
+		});
+
+		// Map furniture to product format for OrderForm
+		const product = {
+			title: selectedFurniture.name,
+			price: 'Consultar precio personalizado',
+			category: 'Muebles Personalizados',
+			image: dataURL || '',
+			description: selectedFurniture.description,
+			dimensions: selectedFurniture.dimensions,
+			material: selectedFurniture.materials,
+			color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie Mesa: ${selectedTableTopColor.nombre}`,
+			warranty: selectedFurniture.warranty,
 		};
-		console.log('🛒 Orden generada:', orderData);
-		alert(
-			`Orden generada para: ${selectedFurniture.name}\nTela: ${selectedColor.nombre}\nMadera: ${selectedWoodColor.nombre}\nSuperficie Mesa: ${selectedTableTopColor.nombre}`
-		);
+
+		// Navigate to OrderForm with the product data
+		navigate('/order-form', { state: { product } });
 	};
 
 	if (loading) {
@@ -579,6 +617,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 									}}
 								>
 									<Stage
+										ref={stageRef}
 										width={canvasSize.width}
 										height={canvasSize.height}
 										className='w-full h-full'
