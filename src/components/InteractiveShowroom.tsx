@@ -54,10 +54,10 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
 		materials: 'Madera pino seco en horno, tela lino, vidrio',
 		warranty: '1 año',
-		baseImageUrl: 'src/assets/comedor_1_gemini_upscayl_4x.png',
-		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_1.png',
-		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_1.png',
-		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_1.png',
+		baseImageUrl: 'src/assets/comedor_1_gemini_upscayl_4x.webp',
+		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_1.webp',
+		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_1.webp',
+		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_1.webp',
 		defaultColorId: 'beige',
 		defaultWoodColorId: 'natural',
 		defaultTableTopColorId: 'natural',
@@ -70,10 +70,10 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
 		materials: 'Madera pino seco en horno, tela lino, vidrio',
 		warranty: '1 año',
-		baseImageUrl: 'src/assets/comedor_2_gemini_upscayl_4x.png',
-		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_2.png',
-		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_2.png',
-		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_2.png',
+		baseImageUrl: 'src/assets/comedor_2_gemini_upscayl_4x.webp',
+		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_2.webp',
+		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_2.webp',
+		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_2.webp',
 		defaultColorId: 'gris',
 		defaultWoodColorId: 'natural',
 		defaultTableTopColorId: 'natural',
@@ -529,10 +529,9 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	};
 
 	const handleCreateOrder = () => {
-		// Capture canvas image as compressed JPEG to stay under EmailJS 50KB limit
 		const dataURL = stageRef.current?.toDataURL({
-			width: 200,
-			height: 200,
+			// width: thumbWidth,
+			// height: thumbHeight,
 			mimeType: 'image/jpeg',
 			quality: 0.6,
 		});

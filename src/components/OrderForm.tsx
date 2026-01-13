@@ -33,6 +33,7 @@ export const OrderForm = () => {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { product } = (location.state as LocationState) || {};
+	console.log(product.image);
 
 	const {
 		register,
@@ -50,7 +51,7 @@ export const OrderForm = () => {
 			throw new Error('Configuración de EmailJS no encontrada');
 		}
 
-		const templateParams = {
+		const templateParams: Record<string, unknown> = {
 			nombre: data.nombre,
 			apellido: data.apellido,
 			telefono: data.telefono,
@@ -61,13 +62,21 @@ export const OrderForm = () => {
 			product_title: product.title || '',
 			product_price: product.price?.toString() || '0',
 			product_category: product.category || '',
-			product_image: product.image || '',
 			product_description: product.description || 'No hay descripción.',
 			product_dimensions: product.dimensions || 'No especificado',
 			product_material: product.material || 'No especificado',
 			product_color: product.color || 'No especificado',
 			product_warranty: product.warranty || 'No especificado',
 		};
+
+		// Configurar imagen del producto para compatibilidad con EmailJS
+		if (product.image && product.image.startsWith('data:')) {
+			templateParams.product_image = product.image.split(',')[1]; // Solo base64
+			templateParams.product_image_type = 'data';
+		} else {
+			templateParams.product_image = product.image || '';
+			templateParams.product_image_type = 'url';
+		}
 
 		await emailjs.send(serviceID, templateID, templateParams, publicKey);
 		toast.success(
