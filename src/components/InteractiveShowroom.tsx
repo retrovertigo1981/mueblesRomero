@@ -267,7 +267,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			const targetLab = colorTela.lab;
 
 			// ⭐ PARÁMETROS OPTIMIZADOS PARA MAYOR INTENSIDAD DE COLOR
-			const colorIntensity = materialType === 'wood' ? 0.95 : 0.92;
+			const colorIntensity = materialType === 'wood' ? 0.99 : 0.95;
 			const contrastBoost = materialType === 'wood' ? 1.25 : 1.0;
 			const saturationFactor = materialType === 'wood' ? 1.3 : 1.1;
 			const colorBoost = materialType === 'wood' ? 1.2 : 1.0;
@@ -591,7 +591,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		<div
 			className={`min-h-screen bg-background py-8 sm:py-12 md:py-16 ${className}`}
 		>
-			<div className='container mx-auto px-8 sm:px-6'>
+			<div className='container mx-auto px-4 sm:px-6 md:px-8'>
 				{/* TÍTULO */}
 				<div className='text-center mb-8 sm:mb-10 md:mb-12'>
 					<h2 className='text-3xl sm:text-4xl md:text-5xl font-serif-display font-bold mb-3 text-foreground'>
@@ -855,7 +855,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 							<CardContent className='pt-6'>
 								<button
 									onClick={handleCreateOrder}
-									className='w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 rounded-md py-4 px-6 font-semibold shadow-hover hover:shadow-lg'
+									className='w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 rounded-md py-4 px-4 sm:px-6 font-semibold shadow-hover hover:shadow-lg'
 								>
 									<ShoppingCart className='w-5 h-5' />
 									<span className='text-base'>Hacer Pedido del Mueble</span>

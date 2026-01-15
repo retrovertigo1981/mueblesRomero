@@ -115,7 +115,7 @@ export const OrderForm = () => {
 									Completa el formulario para procesar tu pedido
 								</p>
 							</CardHeader>
-							<CardContent>
+							<CardContent className='p-4 sm:p-6'>
 								<form onSubmit={handleSubmit} className='space-y-6'>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
 										<div className='space-y-2'>
@@ -330,7 +330,7 @@ export const OrderForm = () => {
 									Revisa los detalles del producto seleccionado
 								</p>
 							</CardHeader>
-							<CardContent className='pb-6'>
+							<CardContent className='p-4 sm:p-6 pb-6'>
 								<div className='flex flex-col md:flex-row gap-6'>
 									{/* Imagen más grande y destacada */}
 									<div className='flex-shrink-0 w-full md:w-2/5'>

@@ -11,7 +11,13 @@ interface ProductGridProps {
 export const ProductGrid = ({ products }: ProductGridProps) => {
 	// const [products, setProducts] = useState<CleanProduct[]>([]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
-	const categories = ['Todos', 'Sala', 'Comedor', 'Oficina', 'Almacenamiento'];
+	const categories = [
+		'Todos',
+		'Sillas',
+		'Comedor',
+		'Muebles de Sala',
+		'Infantil',
+	];
 	const navigate = useNavigate();
 
 	const filteredProducts =
@@ -59,7 +65,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 									/>
 								</div>
 							</CardContent>
-							<CardFooter className='flex flex-col items-start gap-3 p-6'>
+							<CardFooter className='flex flex-col items-start gap-3 p-4 sm:p-6'>
 								<div className='w-full'>
 									<span className='text-xs text-muted-foreground uppercase tracking-wider'>
 										{product.category}
