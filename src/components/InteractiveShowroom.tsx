@@ -19,6 +19,7 @@ import {
 import { COLORES_TELA } from '@/types/colors';
 import { COLORES_MADERA } from '@/types/colors';
 import type { Colores } from '@/types/colors';
+import { optimizeCanvasImage } from '@/utils/imageOptimizer';
 
 interface ColorTelaWithLab extends Colores {
 	lab: { l: number; a: number; b: number };
@@ -528,31 +529,85 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		setSelectedTableTopColorId(colorId);
 	};
 
+	// const handleCreateOrder = () => {
+	// 	const dataURL = stageRef.current?.toDataURL({
+	// 		// width: thumbWidth,
+	// 		// height: thumbHeight,
+	// 		mimeType: 'image/jpeg',
+	// 		quality: 0.6,
+	// 	});
+
+	// 	// Map furniture to product format for OrderForm
+	// 	const product = {
+	// 		title: selectedFurniture.name,
+	// 		price: 'Consultar precio personalizado',
+	// 		category: 'Muebles Personalizados',
+	// 		image: dataURL || '',
+	// 		description: selectedFurniture.description,
+	// 		dimensions: selectedFurniture.dimensions,
+	// 		material: selectedFurniture.materials,
+	// 		color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie Mesa: ${selectedTableTopColor.nombre}`,
+	// 		warranty: selectedFurniture.warranty,
+	// 	};
+
+	// 	// Navigate to OrderForm with the product data
+	// 	navigate('/order-form', { state: { product } });
+	// };
+
 	const handleCreateOrder = () => {
-		const dataURL = stageRef.current?.toDataURL({
-			// width: thumbWidth,
-			// height: thumbHeight,
-			mimeType: 'image/jpeg',
-			quality: 0.6,
-		});
+  // 🔥 CAPTURAR IMAGEN OPTIMIZADA
+  // De 600x600 JPEG 100KB → 400x400 JPEG 20-30KB
+  const optimizedImage = optimizeCanvasImage(stageRef.current, {
+    maxWidth: 400,
+    maxHeight: 400,
+    quality: 0.7,
+    format: 'jpeg'
+  });
 
-		// Map furniture to product format for OrderForm
-		const product = {
-			title: selectedFurniture.name,
-			price: 'Consultar precio personalizado',
-			category: 'Muebles Personalizados',
-			image: dataURL || '',
-			description: selectedFurniture.description,
-			dimensions: selectedFurniture.dimensions,
-			material: selectedFurniture.materials,
-			color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie Mesa: ${selectedTableTopColor.nombre}`,
-			warranty: selectedFurniture.warranty,
-		};
+  // Crear configuración (como backup/referencia)
+  const configuracion = {
+    muebleId: selectedFurniture.id,
+    nombreMueble: selectedFurniture.name,
+    colorTela: {
+      id: selectedColorId,
+      nombre: selectedColor.nombre,
+      hex: selectedColor.hex,
+    },
+    colorMadera: {
+      id: selectedWoodColorId,
+      nombre: selectedWoodColor.nombre,
+      hex: selectedWoodColor.hex,
+    },
+    colorSuperficie: {
+      id: selectedTableTopColorId,
+      nombre: selectedTableTopColor.nombre,
+      hex: selectedTableTopColor.hex,
+    },
+  };
 
-		// Navigate to OrderForm with the product data
-		navigate('/order-form', { state: { product } });
-	};
+  const product = {
+    title: selectedFurniture.name,
+    price: 'Consultar precio personalizado',
+    category: 'Muebles Personalizados',
+    
+    // ✅ Imagen optimizada en base64 (20-30 KB vs 100+ KB)
+    image: optimizedImage,
+    
+    // ✅ Flag para identificar tipo
+    isCustomized: true,
+    
+    // ✅ Configuración como backup
+    customizationConfig: configuracion,
+    
+    description: selectedFurniture.description,
+    dimensions: selectedFurniture.dimensions,
+    material: selectedFurniture.materials,
+    color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie: ${selectedTableTopColor.nombre}`,
+    warranty: selectedFurniture.warranty,
+  };
 
+  navigate('/order-form', { state: { product } });
+}
 	if (loading) {
 		return (
 			<div className='min-h-screen flex items-center justify-center'>

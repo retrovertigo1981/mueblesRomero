@@ -2,6 +2,7 @@ import { Facebook, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Footer = () => {
+	const fullYear = new Date().getFullYear();
 	return (
 		<footer className='bg-foreground text-background py-12 px-4'>
 			<div className='container mx-auto'>
@@ -82,7 +83,10 @@ export const Footer = () => {
 				</div>
 
 				<div className='border-t border-background/20 pt-8 text-center text-background/70'>
-					<p>&copy; 2025 Muebles El Romero. Todos los derechos reservados.</p>
+					<p>
+						&copy; {`${fullYear}`} Muebles El Romero. Todos los derechos
+						reservados.
+					</p>
 				</div>
 			</div>
 		</footer>

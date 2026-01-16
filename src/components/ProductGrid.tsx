@@ -1,7 +1,7 @@
 import type { CleanProduct } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductGridProps {
@@ -9,8 +9,8 @@ interface ProductGridProps {
 }
 
 export const ProductGrid = ({ products }: ProductGridProps) => {
-	// const [products, setProducts] = useState<CleanProduct[]>([]);
 	const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+	const [loadedCount, setLoadedCount] = useState<number>(6);
 	const categories = [
 		'Todos',
 		'Sillas',
@@ -19,11 +19,48 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 		'Infantil',
 	];
 	const navigate = useNavigate();
+	const sentinelRef = useRef<HTMLDivElement>(null);
 
 	const filteredProducts =
 		selectedCategory === 'Todos'
 			? products
 			: products.filter((p) => p.category === selectedCategory);
+
+	const displayedProducts = filteredProducts.slice(0, loadedCount);
+	const hasMore = loadedCount < filteredProducts.length;
+
+	const loadMore = useCallback(() => {
+		if (hasMore) {
+			setLoadedCount((prev) => Math.min(prev + 6, filteredProducts.length));
+		}
+	}, [hasMore, filteredProducts.length]);
+
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMore) {
+					loadMore();
+				}
+			},
+			{ threshold: 1.0 }
+		);
+
+		const currentSentinel = sentinelRef.current;
+		if (currentSentinel) {
+			observer.observe(currentSentinel);
+		}
+
+		return () => {
+			if (currentSentinel) {
+				observer.unobserve(currentSentinel);
+			}
+		};
+	}, [loadMore, hasMore]);
+
+	useEffect(() => {
+		// Reset loaded count when category changes
+		setLoadedCount(6);
+	}, [selectedCategory]);
 
 	return (
 		<section id='catalogo-clasico' className='py-20 px-4 bg-background'>
@@ -51,7 +88,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 				</div>
 
 				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-					{filteredProducts.map((product) => (
+					{displayedProducts.map((product) => (
 						<Card
 							key={product.id}
 							className='group hover:shadow-hover transition-all duration-300 overflow-hidden border-border bg-gradient-card'
@@ -90,6 +127,14 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 						</Card>
 					))}
 				</div>
+				{hasMore && (
+					<div
+						ref={sentinelRef}
+						className='h-10 flex items-center justify-center'
+					>
+						<p className='text-muted-foreground'>Cargando más productos...</p>
+					</div>
+				)}
 			</div>
 		</section>
 	);
