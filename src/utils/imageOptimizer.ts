@@ -17,10 +17,10 @@ export const optimizeCanvasImage = (
 ): string => {
   // Valores por defecto optimizados para EmailJS (< 190KB)
   const {
-    maxWidth = 200,      // Reducido de 400 a 350 para mejor compresión
-    maxHeight = 200,
-    quality = 0.6,       // Reducido de 0.7 a 0.6 (calidad media-alta)
-    format = 'jpeg'      // JPEG es más compatible y ligero que WebP para emails
+    maxWidth = 500,      // Reducido de 400 a 350 para mejor compresión
+    maxHeight = 500,
+    quality = 0.7,       // Reducido de 0.7 a 0.6 (calidad media-alta)
+    format = 'webp'     
   } = options;
 
   // ✅ VALIDACIÓN: Si no hay stage, devolver string vacío para evitar errores

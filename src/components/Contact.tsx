@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Phone, MapPin, AlertCircle, Clock, Shield } from 'lucide-react';
 import { toast } from 'sonner';
-import emailjs from '@emailjs/browser';
 import { useContactForm } from '@/hooks/useSecureForm';
 
 export const Contact = () => {
@@ -17,22 +16,29 @@ export const Contact = () => {
 		timeUntilNextSubmit,
 		resetRateLimit,
 	} = useContactForm(async (data) => {
-		const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID2;
-		const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID2;
-		const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY2;
+		const response = await fetch(
+			'https://api.muebleselromero.cl/wp-json/contact/v1/send',
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					name: data.name,
+					email: data.email,
+					phone: data.phone,
+					message: data.message,
+					website: '', // honeypot
+				}),
+			}
+		);
 
-		if (!serviceId || !templateId || !publicKey) {
-			throw new Error('Configuración de EmailJS no encontrada');
+		const result = await response.json();
+
+		if (!response.ok) {
+			throw new Error(result?.error || 'Error al enviar mensaje');
 		}
 
-		const templateParams = {
-			from_name: data.name,
-			from_email: data.email,
-			from_phone: data.phone || '',
-			message: data.message,
-		};
-
-		await emailjs.send(serviceId, templateId, templateParams, publicKey);
 		toast.success('¡Mensaje enviado! Nos pondremos en contacto pronto.');
 	});
 
@@ -58,6 +64,15 @@ export const Contact = () => {
 							</CardHeader>
 							<CardContent>
 								<form onSubmit={handleSubmit} className='space-y-6'>
+									{/* Honeypot antispam */}
+									<input
+										type='text'
+										tabIndex={-1}
+										autoComplete='off'
+										style={{ display: 'none' }}
+										{...register('website')}
+									/>
+
 									<div>
 										<Label htmlFor='name'>Nombre Completo</Label>
 										<Input
@@ -206,7 +221,6 @@ export const Contact = () => {
 												href='mailto:contacto@muebleselromero.cl'
 												className='text-muted-foreground hover:text-primary transition-colors'
 											>
-												{/* El span interior permite copiar el texto fácilmente sin arrastrar el enlace */}
 												<span>contacto@muebleselromero.cl</span>
 											</a>
 										</div>
