@@ -1,11 +1,6 @@
-import React, {
-	useEffect,
-	useState,
-	useCallback,
-	useMemo,
-	useRef,
-} from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import Konva from 'konva';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Palette, Trees, Package, ShoppingCart } from 'lucide-react';
@@ -16,14 +11,39 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
-import { COLORES_TELA } from '@/types/colors';
-import { COLORES_MADERA } from '@/types/colors';
+import { COLORES_TELA, COLORES_MADERA } from '@/types/colors';
 import type { Colores } from '@/types/colors';
 import { optimizeCanvasImage } from '@/utils/imageOptimizer';
 
-interface ColorTelaWithLab extends Colores {
-	lab: { l: number; a: number; b: number };
-}
+// Conversion functions
+const labToXyz = (l: number, a: number, b: number) => {
+	let y = (l + 16) / 116;
+	let x = a / 500 + y;
+	let z = y - b / 200;
+	x = x > 0.206897 ? Math.pow(x, 3) : (x - 16 / 116) / 7.787;
+	y = y > 0.206897 ? Math.pow(y, 3) : (y - 16 / 116) / 7.787;
+	z = z > 0.206897 ? Math.pow(z, 3) : (z - 16 / 116) / 7.787;
+	x *= 95.047;
+	y *= 100.0;
+	z *= 108.883;
+	return { x, y, z };
+};
+
+const xyzToRgb = (x: number, y: number, z: number) => {
+	x /= 100;
+	y /= 100;
+	z /= 100;
+	let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+	let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+	let b = x * 0.0557 + y * -0.204 + z * 1.057;
+	r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+	g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+	b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+	r = Math.max(0, Math.min(1, r)) * 255;
+	g = Math.max(0, Math.min(1, g)) * 255;
+	b = Math.max(0, Math.min(1, b)) * 255;
+	return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+};
 
 interface CustomizableFurniture {
 	id: string;
@@ -43,6 +63,8 @@ interface CustomizableFurniture {
 
 interface InteractiveShowroomProps {
 	className?: string;
+	onLoadingChange?: (loading: boolean) => void;
+	onErrorChange?: (error: string | null) => void;
 }
 
 // 🪑 CATÁLOGO DE MUEBLES
@@ -55,10 +77,10 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
 		materials: 'Madera pino seco en horno, tela lino, vidrio',
 		warranty: '1 año',
-		baseImageUrl: 'src/assets/comedor_1_gemini_upscayl_4x.webp',
-		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_1.webp',
-		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_1.webp',
-		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_1.webp',
+		baseImageUrl: '/assets/comedor_1_gemini_upscayl_4x.webp',
+		maskFabricImageUrl: '/assets/capa_tela_sillas_comedor_1.webp',
+		tableTopMaskImageUrl: '/assets/capa_cubierta_comedor_1.webp',
+		woodMaskImageUrl: '/assets/capa_madera_comerdor_1.webp',
 		defaultColorId: 'beige',
 		defaultWoodColorId: 'natural',
 		defaultTableTopColorId: 'natural',
@@ -71,10 +93,10 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 		dimensions: '150 x 85 cm (mesa) + banqueta 120 cm',
 		materials: 'Madera pino seco en horno, tela lino, vidrio',
 		warranty: '1 año',
-		baseImageUrl: 'src/assets/comedor_2_gemini_upscayl_4x.webp',
-		maskFabricImageUrl: 'src/assets/capa_tela_sillas_comedor_2.webp',
-		tableTopMaskImageUrl: 'src/assets/capa_cubierta_comedor_2.webp',
-		woodMaskImageUrl: 'src/assets/capa_madera_comerdor_2.webp',
+		baseImageUrl: '/assets/comedor_2_gemini_upscayl_4x.webp',
+		maskFabricImageUrl: '/assets/capa_tela_sillas_comedor_2.webp',
+		tableTopMaskImageUrl: '/assets/capa_cubierta_comedor_2.webp',
+		woodMaskImageUrl: '/assets/capa_madera_comerdor_2.webp',
 		defaultColorId: 'gris',
 		defaultWoodColorId: 'natural',
 		defaultTableTopColorId: 'natural',
@@ -83,15 +105,18 @@ const FURNITURE_CATALOG: CustomizableFurniture[] = [
 
 export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	className = '',
+	onLoadingChange,
+	onErrorChange,
 }) => {
 	const navigate = useNavigate();
+	const maskCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
 	// Check for browser compatibility
 	useEffect(() => {
 		const isBrave = navigator.userAgent.includes('Brave');
 		if (isBrave) {
 			console.warn(
-				'Brave browser detected. KonvaJS may be blocked by Brave shield. Please disable it.'
+				'Brave browser detected. KonvaJS may be blocked by Brave shield. Please disable it.',
 			);
 		}
 		console.log('Browser:', navigator.userAgent);
@@ -100,24 +125,30 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [selectedFurniture, setSelectedFurniture] =
 		useState<CustomizableFurniture>(FURNITURE_CATALOG[0]);
 	const [selectedColorId, setSelectedColorId] = useState(
-		FURNITURE_CATALOG[0].defaultColorId
+		FURNITURE_CATALOG[0].defaultColorId,
 	);
 	const [selectedWoodColorId, setSelectedWoodColorId] = useState(
-		FURNITURE_CATALOG[0].defaultWoodColorId
+		FURNITURE_CATALOG[0].defaultWoodColorId,
 	);
 	const [selectedTableTopColorId, setSelectedTableTopColorId] = useState(
-		FURNITURE_CATALOG[0].defaultTableTopColorId || 'natural'
+		FURNITURE_CATALOG[0].defaultTableTopColorId || 'natural',
 	);
 
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 	const [processedMask, setProcessedMask] = useState<HTMLCanvasElement | null>(
-		null
+		null,
 	);
 	const [processedWoodMask, setProcessedWoodMask] =
 		useState<HTMLCanvasElement | null>(null);
 	const [processedTableTopMask, setProcessedTableTopMask] =
 		useState<HTMLCanvasElement | null>(null);
+
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	// Loading states for color changes
+	const [processingFabric, setProcessingFabric] = useState(false);
+	const [processingWood, setProcessingWood] = useState(false);
+	const [processingTableTop, setProcessingTableTop] = useState(false);
 
 	const [baseImg, setBaseImg] = useState<HTMLImageElement | null>(null);
 	const [maskImg, setMaskImg] = useState<HTMLImageElement | null>(null);
@@ -125,7 +156,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [tableTopImg, setTableTopImg] = useState<HTMLImageElement | null>(null);
 
 	const isMounted = useRef(true);
-	const stageRef = useRef<any>(null);
+	const stageRef = useRef<InstanceType<typeof Konva.Stage> | null>(null);
 
 	const loadImage = useCallback(
 		async (url: string): Promise<HTMLImageElement> => {
@@ -143,137 +174,57 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				img.src = url;
 			});
 		},
-		[]
+		[],
 	);
 
-	// 🔬 ALGORITMO LAB
-	const rgbToXyz = useCallback((r: number, g: number, b: number) => {
-		r = r / 255;
-		g = g / 255;
-		b = b / 255;
-		r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
-		g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
-		b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
-		r *= 100;
-		g *= 100;
-		b *= 100;
-		const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
-		const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
-		const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
-		return { x, y, z };
-	}, []);
+	// ✅ COLORES SELECCIONADOS (DIRECTO DESDE LA PALETA)
+	const selectedColor =
+		COLORES_TELA.find((c) => c.id === selectedColorId) || COLORES_TELA[0];
+	const selectedWoodColor =
+		COLORES_MADERA.find((c) => c.id === selectedWoodColorId) ||
+		COLORES_MADERA[0];
+	const selectedTableTopColor =
+		COLORES_MADERA.find((c) => c.id === selectedTableTopColorId) ||
+		COLORES_MADERA[0];
 
-	const xyzToLab = useCallback((x: number, y: number, z: number) => {
-		x /= 95.047;
-		y /= 100.0;
-		z /= 108.883;
-		x = x > 0.008856 ? Math.pow(x, 1 / 3) : 7.787 * x + 16 / 116;
-		y = y > 0.008856 ? Math.pow(y, 1 / 3) : 7.787 * y + 16 / 116;
-		z = z > 0.008856 ? Math.pow(z, 1 / 3) : 7.787 * z + 16 / 116;
-		const l = 116 * y - 16;
-		const a = 500 * (x - y);
-		const b = 200 * (y - z);
-		return { l, a, b };
-	}, []);
-
-	const labToXyz = useCallback((l: number, a: number, b: number) => {
-		let y = (l + 16) / 116;
-		let x = a / 500 + y;
-		let z = y - b / 200;
-		x = x > 0.206897 ? Math.pow(x, 3) : (x - 16 / 116) / 7.787;
-		y = y > 0.206897 ? Math.pow(y, 3) : (y - 16 / 116) / 7.787;
-		z = z > 0.206897 ? Math.pow(z, 3) : (z - 16 / 116) / 7.787;
-		x *= 95.047;
-		y *= 100.0;
-		z *= 108.883;
-		return { x, y, z };
-	}, []);
-
-	const xyzToRgb = useCallback((x: number, y: number, z: number) => {
-		x /= 100;
-		y /= 100;
-		z /= 100;
-		let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
-		let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
-		let b = x * 0.0557 + y * -0.204 + z * 1.057;
-		r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
-		g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
-		b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
-		r = Math.max(0, Math.min(1, r)) * 255;
-		g = Math.max(0, Math.min(1, g)) * 255;
-		b = Math.max(0, Math.min(1, b)) * 255;
-		return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
-	}, []);
-
-	const rgbToLab = useCallback(
-		(r: number, g: number, b: number) => {
-			const xyz = rgbToXyz(r, g, b);
-			return xyzToLab(xyz.x, xyz.y, xyz.z);
-		},
-		[rgbToXyz, xyzToLab]
-	);
-
-	const paletaConLab: ColorTelaWithLab[] = useMemo(() => {
-		return COLORES_TELA.map((color) => ({
-			...color,
-			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
-		}));
-	}, [rgbToLab]);
-
-	const paletaMaderaConLab: ColorTelaWithLab[] = useMemo(() => {
-		return COLORES_MADERA.map((color) => ({
-			...color,
-			lab: rgbToLab(color.rgb.r, color.rgb.g, color.rgb.b),
-		}));
-	}, [rgbToLab]);
-
-	const selectedColor = useMemo(
-		() => paletaConLab.find((c) => c.id === selectedColorId) || paletaConLab[0],
-		[selectedColorId, paletaConLab]
-	);
-
-	const selectedWoodColor = useMemo(
-		() =>
-			paletaMaderaConLab.find((c) => c.id === selectedWoodColorId) ||
-			paletaMaderaConLab[0],
-		[selectedWoodColorId, paletaMaderaConLab]
-	);
-
-	const selectedTableTopColor = useMemo(
-		() =>
-			paletaMaderaConLab.find((c) => c.id === selectedTableTopColorId) ||
-			paletaMaderaConLab[0],
-		[selectedTableTopColorId, paletaMaderaConLab]
-	);
-
-	// 🪵 PROCESAMIENTO DE MADERA OPTIMIZADO - OPCIÓN 2: BALANCEADA
+	// 🪵 PROCESAMIENTO DE MÁSCARAS CON CACHE
 	const processMaskWithPalette = useCallback(
-		(
+		async (
 			maskImage: HTMLImageElement | null,
-			colorTela: ColorTelaWithLab,
-			materialType: 'fabric' | 'wood'
-		): HTMLCanvasElement | null => {
-			if (!maskImage || !colorTela.lab) return null;
+			colorTela: Colores,
+			materialType: 'fabric' | 'wood',
+		): Promise<HTMLCanvasElement | null> => {
+			if (!maskImage) return null;
 
+			// Check cache first
+			const cacheKey = `${maskImage.src}-${colorTela.id}-${materialType}`;
+			const cached = maskCache.current.get(cacheKey);
+			if (cached) {
+				return cached;
+			}
+
+			// Create canvas optimized to canvas size for better performance
 			const canvas = document.createElement('canvas');
-			canvas.width = maskImage.width;
-			canvas.height = maskImage.height;
+			canvas.width = canvasSize.width;
+			canvas.height = canvasSize.height;
 			const ctx = canvas.getContext('2d', { willReadFrequently: true });
 			if (!ctx) return null;
 
-			ctx.drawImage(maskImage, 0, 0);
+			// Draw mask image scaled to canvas size
+			ctx.drawImage(maskImage, 0, 0, canvas.width, canvas.height);
 			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 			const pixels = imageData.data;
 
+			// Full color processing logic
 			const targetLab = colorTela.lab;
 
-			// ⭐ PARÁMETROS OPTIMIZADOS PARA MAYOR INTENSIDAD DE COLOR
+			// Parameters optimized for higher color intensity
 			const colorIntensity = materialType === 'wood' ? 0.99 : 0.95;
 			const contrastBoost = materialType === 'wood' ? 1.25 : 1.0;
 			const saturationFactor = materialType === 'wood' ? 1.3 : 1.1;
 			const colorBoost = materialType === 'wood' ? 1.2 : 1.0;
 
-			// ============ FASE 1: APLICACIÓN DE COLOR BASE ============
+			// Phase 1: Base color application
 			for (let i = 0; i < pixels.length; i += 4) {
 				const alpha = pixels[i + 3];
 				if (alpha < 30) {
@@ -288,7 +239,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				const luminosity = 0.299 * r + 0.587 * g + 0.114 * b;
 				const maskL = (luminosity / 255) * 100;
 
-				// 🆕 AJUSTE DINÁMICO: Colores claros necesitan más rango
+				// Dynamic adjustment: Light colors need more range
 				const isLightColor = targetLab.l > 60;
 				const rangeFactor = isLightColor ? 1.3 : 1.0;
 
@@ -299,13 +250,13 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 				const blendFactor = (alpha / 255) * colorIntensity;
 
-				// 🆕 APLICAR COLOR BOOST
+				// Apply color boost
 				let finalL =
 					adjustedL * blendFactor * colorBoost + maskL * (1 - blendFactor);
 				let finalA = targetLab.a * blendFactor * colorBoost;
 				let finalB = targetLab.b * blendFactor * colorBoost;
 
-				// 🆕 OSCURECER PARA MADERA
+				// Darken for wood
 				if (materialType === 'wood') {
 					const darkeningFactor = 0.85;
 					finalL *= darkeningFactor;
@@ -322,7 +273,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				pixels[i + 3] = Math.max(0, alpha - 4);
 			}
 
-			// ============ FASE 2: POST-PROCESAMIENTO ============
+			// Phase 2: Post-processing
 			if (materialType === 'wood') {
 				for (let i = 0; i < pixels.length; i += 4) {
 					if (pixels[i + 3] === 0) continue;
@@ -361,9 +312,13 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			}
 
 			ctx.putImageData(imageData, 0, 0);
+
+			// Cache the result
+			maskCache.current.set(cacheKey, canvas);
+
 			return canvas;
 		},
-		[xyzToRgb, labToXyz]
+		[],
 	);
 
 	// 📏 SISTEMA DE ESCALADO "COVER"
@@ -372,7 +327,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			imgWidth: number,
 			imgHeight: number,
 			containerWidth: number,
-			containerHeight: number
+			containerHeight: number,
 		) => {
 			const imgAspect = imgWidth / imgHeight;
 			const containerAspect = containerWidth / containerHeight;
@@ -403,7 +358,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				scaleY: height / imgHeight,
 			};
 		},
-		[]
+		[],
 	);
 
 	// 🔄 CARGA DE IMÁGENES
@@ -413,6 +368,8 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			try {
 				setLoading(true);
 				setError(null);
+				onLoadingChange?.(true);
+				onErrorChange?.(null);
 
 				console.log('Loading furniture:', selectedFurniture.name);
 				console.log('Base URL:', selectedFurniture.baseImageUrl);
@@ -433,12 +390,30 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				setMaskImg(mask);
 				setWoodImg(wood);
 				setTableTopImg(tableTop);
+
+				// Process initial masks
+				const [fabricMask, woodMaskCanvas, tableTopMaskCanvas] =
+					await Promise.all([
+						processMaskWithPalette(mask, selectedColor, 'fabric'),
+						processMaskWithPalette(wood, selectedWoodColor, 'wood'),
+						processMaskWithPalette(tableTop, selectedTableTopColor, 'wood'),
+					]);
+
+				if (!isMounted.current) return;
+
+				setProcessedMask(fabricMask);
+				setProcessedWoodMask(woodMaskCanvas);
+				setProcessedTableTopMask(tableTopMaskCanvas);
+
 				setLoading(false);
+				onLoadingChange?.(false);
 			} catch (err) {
 				if (!isMounted.current) return;
 				console.error('Error loading images:', err);
 				setError('Error al cargar las imágenes. Verifica las URLs.');
+				onErrorChange?.('Error al cargar las imágenes. Verifica las URLs.');
 				setLoading(false);
+				onLoadingChange?.(false);
 			}
 		};
 
@@ -454,38 +429,72 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		return () => {
 			isMounted.current = false;
 		};
-	}, [selectedFurniture, loadImage]);
+	}, [
+		selectedFurniture,
+		loadImage,
+		selectedColor,
+		selectedWoodColor,
+		selectedTableTopColor,
+		processMaskWithPalette,
+	]);
 
-	const processMask = useCallback(
-		() => processMaskWithPalette(maskImg, selectedColor, 'fabric'),
-		[maskImg, selectedColor, processMaskWithPalette]
-	);
+	const processMask = useCallback(async () => {
+		setProcessingFabric(true);
+		try {
+			const result = await processMaskWithPalette(
+				maskImg,
+				selectedColor,
+				'fabric',
+			);
+			setProcessedMask(result);
+		} finally {
+			setProcessingFabric(false);
+		}
+	}, [maskImg, selectedColor, processMaskWithPalette]);
 
-	const processWoodMask = useCallback(
-		() => processMaskWithPalette(woodImg, selectedWoodColor, 'wood'),
-		[woodImg, selectedWoodColor, processMaskWithPalette]
-	);
+	const processWoodMask = useCallback(async () => {
+		setProcessingWood(true);
+		try {
+			const result = await processMaskWithPalette(
+				woodImg,
+				selectedWoodColor,
+				'wood',
+			);
+			setProcessedWoodMask(result);
+		} finally {
+			setProcessingWood(false);
+		}
+	}, [woodImg, selectedWoodColor, processMaskWithPalette]);
 
-	const processTableTopMask = useCallback(
-		() => processMaskWithPalette(tableTopImg, selectedTableTopColor, 'wood'),
-		[tableTopImg, selectedTableTopColor, processMaskWithPalette]
-	);
+	const processTableTopMask = useCallback(async () => {
+		setProcessingTableTop(true);
+		try {
+			const result = await processMaskWithPalette(
+				tableTopImg,
+				selectedTableTopColor,
+				'wood',
+			);
+			setProcessedTableTopMask(result);
+		} finally {
+			setProcessingTableTop(false);
+		}
+	}, [tableTopImg, selectedTableTopColor, processMaskWithPalette]);
 
 	useEffect(() => {
 		if (baseImg && maskImg) {
-			setProcessedMask(processMask());
+			processMask();
 		}
 	}, [baseImg, maskImg, selectedColorId, processMask]);
 
 	useEffect(() => {
 		if (baseImg && woodImg) {
-			setProcessedWoodMask(processWoodMask());
+			processWoodMask();
 		}
 	}, [baseImg, woodImg, selectedWoodColorId, processWoodMask]);
 
 	useEffect(() => {
 		if (baseImg && tableTopImg) {
-			setProcessedTableTopMask(processTableTopMask());
+			processTableTopMask();
 		}
 	}, [baseImg, tableTopImg, selectedTableTopColorId, processTableTopMask]);
 
@@ -502,7 +511,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			baseImg.width,
 			baseImg.height,
 			canvasSize.width,
-			canvasSize.height
+			canvasSize.height,
 		);
 	}, [baseImg, canvasSize.width, canvasSize.height, calculateCoverDimensions]);
 
@@ -511,136 +520,90 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const handleFurnitureSelect = (furnitureId: string) => {
 		const furniture = FURNITURE_CATALOG.find((f) => f.id === furnitureId);
 		if (!furniture) return;
+		setLoading(true);
+		onLoadingChange?.(true); // Show loader immediately
 		setSelectedFurniture(furniture);
 		setSelectedColorId(furniture.defaultColorId);
 		setSelectedWoodColorId(furniture.defaultWoodColorId);
 		setSelectedTableTopColorId(furniture.defaultTableTopColorId || 'natural');
 	};
 
-	const handleColorSelect = (colorId: string) => {
-		setSelectedColorId(colorId);
-	};
+	// Debounced color selection handlers
+	const debounceTimeoutRef = useRef<number | null>(null);
 
-	const handleWoodColorSelect = (colorId: string) => {
-		setSelectedWoodColorId(colorId);
-	};
+	const handleColorSelect = useCallback((colorId: string) => {
+		if (debounceTimeoutRef.current) {
+			clearTimeout(debounceTimeoutRef.current);
+		}
+		debounceTimeoutRef.current = setTimeout(() => {
+			setSelectedColorId(colorId);
+		}, 200);
+	}, []);
 
-	const handleTableTopColorSelect = (colorId: string) => {
-		setSelectedTableTopColorId(colorId);
-	};
+	const handleWoodColorSelect = useCallback((colorId: string) => {
+		if (debounceTimeoutRef.current) {
+			clearTimeout(debounceTimeoutRef.current);
+		}
+		debounceTimeoutRef.current = setTimeout(() => {
+			setSelectedWoodColorId(colorId);
+		}, 200);
+	}, []);
 
-	// const handleCreateOrder = () => {
-	// 	const dataURL = stageRef.current?.toDataURL({
-	// 		// width: thumbWidth,
-	// 		// height: thumbHeight,
-	// 		mimeType: 'image/jpeg',
-	// 		quality: 0.6,
-	// 	});
-
-	// 	// Map furniture to product format for OrderForm
-	// 	const product = {
-	// 		title: selectedFurniture.name,
-	// 		price: 'Consultar precio personalizado',
-	// 		category: 'Muebles Personalizados',
-	// 		image: dataURL || '',
-	// 		description: selectedFurniture.description,
-	// 		dimensions: selectedFurniture.dimensions,
-	// 		material: selectedFurniture.materials,
-	// 		color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie Mesa: ${selectedTableTopColor.nombre}`,
-	// 		warranty: selectedFurniture.warranty,
-	// 	};
-
-	// 	// Navigate to OrderForm with the product data
-	// 	navigate('/order-form', { state: { product } });
-	// };
+	const handleTableTopColorSelect = useCallback((colorId: string) => {
+		if (debounceTimeoutRef.current) {
+			clearTimeout(debounceTimeoutRef.current);
+		}
+		debounceTimeoutRef.current = setTimeout(() => {
+			setSelectedTableTopColorId(colorId);
+		}, 200);
+	}, []);
 
 	const handleCreateOrder = () => {
-  // 🔥 CAPTURAR IMAGEN OPTIMIZADA
-  // De 600x600 JPEG 100KB → 400x400 JPEG 20-30KB
-  const optimizedImage = optimizeCanvasImage(stageRef.current, {
-    maxWidth: 400,
-    maxHeight: 400,
-    quality: 0.7,
-    format: 'jpeg'
-  });
+		// 🔥 CAPTURAR IMAGEN OPTIMIZADA
+		const optimizedImage = optimizeCanvasImage(stageRef.current, {
+			maxWidth: 400,
+			maxHeight: 400,
+			quality: 0.7,
+			format: 'jpeg',
+		});
 
-  // Crear configuración (como backup/referencia)
-  const configuracion = {
-    muebleId: selectedFurniture.id,
-    nombreMueble: selectedFurniture.name,
-    colorTela: {
-      id: selectedColorId,
-      nombre: selectedColor.nombre,
-      hex: selectedColor.hex,
-    },
-    colorMadera: {
-      id: selectedWoodColorId,
-      nombre: selectedWoodColor.nombre,
-      hex: selectedWoodColor.hex,
-    },
-    colorSuperficie: {
-      id: selectedTableTopColorId,
-      nombre: selectedTableTopColor.nombre,
-      hex: selectedTableTopColor.hex,
-    },
-  };
+		// Crear configuración
+		const configuracion = {
+			muebleId: selectedFurniture.id,
+			nombreMueble: selectedFurniture.name,
+			colorTela: {
+				id: selectedColorId,
+				nombre: selectedColor.nombre,
+				hex: selectedColor.hex,
+			},
+			colorMadera: {
+				id: selectedWoodColorId,
+				nombre: selectedWoodColor.nombre,
+				hex: selectedWoodColor.hex,
+			},
+			colorSuperficie: {
+				id: selectedTableTopColorId,
+				nombre: selectedTableTopColor.nombre,
+				hex: selectedTableTopColor.hex,
+			},
+		};
 
-  const product = {
-    title: selectedFurniture.name,
-    price: 'Consultar precio personalizado',
-    category: 'Muebles Personalizados',
-    
-    // ✅ Imagen optimizada en base64 (20-30 KB vs 100+ KB)
-    image: optimizedImage,
-    
-    // ✅ Flag para identificar tipo
-    isCustomized: true,
-    
-    // ✅ Configuración como backup
-    customizationConfig: configuracion,
-    
-    description: selectedFurniture.description,
-    dimensions: selectedFurniture.dimensions,
-    material: selectedFurniture.materials,
-    color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie: ${selectedTableTopColor.nombre}`,
-    warranty: selectedFurniture.warranty,
-  };
+		const product = {
+			title: selectedFurniture.name,
+			price: 'Consultar precio personalizado',
+			category: 'Muebles Personalizados',
+			image: optimizedImage,
+			isCustomized: true,
+			customizationConfig: configuracion,
+			description: selectedFurniture.description,
+			dimensions: selectedFurniture.dimensions,
+			material: selectedFurniture.materials,
+			color: `Tela: ${selectedColor.nombre}, Madera: ${selectedWoodColor.nombre}, Superficie: ${selectedTableTopColor.nombre}`,
+			warranty: selectedFurniture.warranty,
+		};
 
-  navigate('/order-form', { state: { product } });
-}
-	if (loading) {
-		return (
-			<div className='min-h-screen flex items-center justify-center'>
-				<Card className={className}>
-					<CardContent className='flex items-center justify-center h-96 p-6'>
-						<div className='flex flex-col items-center gap-4'>
-							<Loader2 className='h-8 w-8 animate-spin text-primary' />
-							<p className='text-muted-foreground'>
-								Cargando personalizador...
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
-	if (error) {
-		return (
-			<div className='min-h-screen flex items-center justify-center'>
-				<Card className={className}>
-					<CardContent className='flex items-center justify-center h-96 p-6'>
-						<div className='text-center'>
-							<p className='text-destructive font-semibold mb-2'>⚠️ {error}</p>
-							<p className='text-sm text-muted-foreground'>
-								Verifica que las imágenes existan en la carpeta assets
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
+		navigate('/order-form', { state: { product } });
+	};
 
 	return (
 		<div
@@ -688,7 +651,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 												/>
 											)}
 
-											{/* Madera Barnizada - ⭐ OPACITY OPTIMIZADO 0.88 → 0.95 */}
+											{/* Madera Barnizada */}
 											{dimensions && processedWoodMask && woodImg && (
 												<KonvaImage
 													image={processedWoodMask}
@@ -764,19 +727,22 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 						{/* SELECTORES DE COLOR */}
 						<div className='grid grid-cols-1 gap-4'>
-							{/* sm:grid-cols-2 lg:grid-cols-3 gap-4 */}
 							{/* COLOR TELA */}
 							<Card className='shadow-soft'>
 								<CardHeader className='pb-3'>
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Palette className='w-4 h-4 text-primary' />
 										Tela
+										{processingFabric && (
+											<Loader2 className='w-4 h-4 animate-spin' />
+										)}
 									</CardTitle>
 								</CardHeader>
 								<CardContent className='space-y-3'>
 									<Select
 										value={selectedColorId}
 										onValueChange={handleColorSelect}
+										disabled={processingFabric}
 									>
 										<SelectTrigger className='w-full'>
 											<SelectValue>
@@ -790,7 +756,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											</SelectValue>
 										</SelectTrigger>
 										<SelectContent>
-											{paletaConLab.map((color) => (
+											{COLORES_TELA.map((color) => (
 												<SelectItem key={color.id} value={color.id}>
 													<div className='flex items-center gap-2'>
 														<div
@@ -817,12 +783,16 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Trees className='w-4 h-4 text-primary' />
 										Barniz Madera
+										{processingWood && (
+											<Loader2 className='w-4 h-4 animate-spin' />
+										)}
 									</CardTitle>
 								</CardHeader>
 								<CardContent className='space-y-3'>
 									<Select
 										value={selectedWoodColorId}
 										onValueChange={handleWoodColorSelect}
+										disabled={processingWood}
 									>
 										<SelectTrigger className='w-full'>
 											<SelectValue>
@@ -836,7 +806,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											</SelectValue>
 										</SelectTrigger>
 										<SelectContent>
-											{paletaMaderaConLab.map((color) => (
+											{COLORES_MADERA.map((color) => (
 												<SelectItem key={color.id} value={color.id}>
 													<div className='flex items-center gap-2'>
 														<div
@@ -856,19 +826,22 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 									</div>
 								</CardContent>
 							</Card>
-
 							{/* COLOR SUPERFICIE MESA */}
 							<Card className='shadow-soft'>
 								<CardHeader className='pb-3'>
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Trees className='w-4 h-4 text-primary' />
 										Barniz Superficie
+										{processingTableTop && (
+											<Loader2 className='w-4 h-4 animate-spin' />
+										)}
 									</CardTitle>
 								</CardHeader>
 								<CardContent className='space-y-3'>
 									<Select
 										value={selectedTableTopColorId}
 										onValueChange={handleTableTopColorSelect}
+										disabled={processingTableTop}
 									>
 										<SelectTrigger className='w-full'>
 											<SelectValue>
@@ -884,7 +857,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											</SelectValue>
 										</SelectTrigger>
 										<SelectContent>
-											{paletaMaderaConLab.map((color) => (
+											{COLORES_MADERA.map((color) => (
 												<SelectItem key={color.id} value={color.id}>
 													<div className='flex items-center gap-2'>
 														<div
@@ -905,6 +878,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 								</CardContent>
 							</Card>
 						</div>
+
 						{/* BOTÓN DE PEDIDO */}
 						<Card className='shadow-soft'>
 							<CardContent className='pt-6'>

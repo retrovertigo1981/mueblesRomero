@@ -131,7 +131,7 @@ export const OrderForm = () => {
 				throw new Error(
 					responseData.error ||
 						responseData.message ||
-						'Error al enviar la orden'
+						'Error al enviar la orden',
 				);
 			}
 
@@ -142,7 +142,7 @@ export const OrderForm = () => {
 				{
 					description: 'Revisa tu correo para ver los detalles de tu orden.',
 					duration: 5000,
-				}
+				},
 			);
 
 			// Opcional: Redirigir después de 2 segundos
