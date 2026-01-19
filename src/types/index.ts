@@ -136,10 +136,11 @@ export interface CleanProductDetail extends CleanProduct {
   material: string;
   color: string;
   warranty: string;
-  
+
   // 🔥 NUEVOS CAMPOS OPCIONALES para catálogo interactivo
   isCustomized?: boolean;
   customizationConfig?: CustomizationConfig;
+  stageRef?: unknown; // Reference to Konva stage for customized products
 }
 
 // --- Funciones de limpieza (sin cambios) ---

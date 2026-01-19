@@ -14,7 +14,7 @@ export interface ValidationErrors {
   [key: string]: string | ValidationErrors;
 }
 
-export interface FormState<T = unknown> {
+export interface FormState {
   isSubmitting: boolean;
   isValid: boolean;
   isDirty: boolean;
@@ -369,11 +369,12 @@ export function useContactForm(onSubmit: (data: ContactFormData) => Promise<void
       .max(100, "El email no puede exceder 100 caracteres"),
     phone: z.string()
       .optional()
-      .refine((val) => !val || /^[+]?[1-9][\d]{0,15}$/.test(val.replace(/\s/g, "")), 
+      .refine((val) => !val || /^[+]?[1-9][\d]{0,15}$/.test(val.replace(/\s/g, "")),
         "Ingresa un teléfono válido"),
     message: z.string()
       .min(10, "El mensaje debe tener al menos 10 caracteres")
       .max(1000, "El mensaje no puede exceder 1000 caracteres"),
+    website: z.string().optional(), // Honeypot field
   });
 
   return useSecureForm({
@@ -438,6 +439,7 @@ export interface ContactFormData {
   email: string;
   phone?: string;
   message: string;
+  website?: string; // Honeypot field
 }
 
 export interface OrderFormData {

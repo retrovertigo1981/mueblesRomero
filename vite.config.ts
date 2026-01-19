@@ -149,7 +149,7 @@ export default defineConfig(({ mode }) => {
 
     // Configuración experimental para mejor performance
     experimental: {
-      renderBuiltUrl(filename, { hostType }) {
+      renderBuiltUrl(_filename, { hostType }) {
         if (hostType === 'js') {
           return { relative: true };
         } else {
