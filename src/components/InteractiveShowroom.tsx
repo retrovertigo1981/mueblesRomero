@@ -142,9 +142,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const [processedTableTopMask, setProcessedTableTopMask] =
 		useState<HTMLCanvasElement | null>(null);
 
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
 	// Loading states for color changes
 	const [processingFabric, setProcessingFabric] = useState(false);
 	const [processingWood, setProcessingWood] = useState(false);
@@ -366,8 +363,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		isMounted.current = true;
 		const loadAllImages = async () => {
 			try {
-				setLoading(true);
-				setError(null);
 				onLoadingChange?.(true);
 				onErrorChange?.(null);
 
@@ -405,14 +400,11 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				setProcessedWoodMask(woodMaskCanvas);
 				setProcessedTableTopMask(tableTopMaskCanvas);
 
-				setLoading(false);
 				onLoadingChange?.(false);
 			} catch (err) {
 				if (!isMounted.current) return;
 				console.error('Error loading images:', err);
-				setError('Error al cargar las imágenes. Verifica las URLs.');
 				onErrorChange?.('Error al cargar las imágenes. Verifica las URLs.');
-				setLoading(false);
 				onLoadingChange?.(false);
 			}
 		};
@@ -520,7 +512,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 	const handleFurnitureSelect = (furnitureId: string) => {
 		const furniture = FURNITURE_CATALOG.find((f) => f.id === furnitureId);
 		if (!furniture) return;
-		setLoading(true);
 		onLoadingChange?.(true); // Show loader immediately
 		setSelectedFurniture(furniture);
 		setSelectedColorId(furniture.defaultColorId);
