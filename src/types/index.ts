@@ -72,6 +72,8 @@
 
 // --- Interfaces Base (sin cambios) ---
 
+import type Konva from 'konva';
+
 interface IProductAcfBase {
   price: string;
   category: string;
@@ -140,7 +142,7 @@ export interface CleanProductDetail extends CleanProduct {
   // 🔥 NUEVOS CAMPOS OPCIONALES para catálogo interactivo
   isCustomized?: boolean;
   customizationConfig?: CustomizationConfig;
-  stageRef?: unknown; // Reference to Konva stage for customized products
+  stageRef?: Konva.Stage | null; // Reference to Konva stage for customized products
 }
 
 // --- Funciones de limpieza (sin cambios) ---

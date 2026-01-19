@@ -315,7 +315,7 @@ export function useSecureForm<T extends FieldValues = FieldValues>({
   }, []);
 
   // Estado del formulario
-  const formState: FormState<T> = {
+  const formState: FormState = {
     isSubmitting,
     isValid,
     isDirty,
