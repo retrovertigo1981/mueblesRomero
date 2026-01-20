@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { toast } from 'sonner';
 import type { CleanProductDetail } from '@/types';
-import { useOrderForm } from '@/hooks/useSecureForm';
+import { useOrderForm, type OrderFormData } from '@/hooks/useSecureForm';
 import {
 	ArrowLeft,
 	Ruler,
@@ -35,14 +35,7 @@ export const OrderForm = () => {
 	const navigate = useNavigate();
 	const { product } = (location.state as LocationState) || {};
 
-	const {
-		register,
-		handleSubmit,
-		formState,
-		isRateLimited,
-		timeUntilNextSubmit,
-		resetRateLimit,
-	} = useOrderForm(async (data) => {
+	const onSubmit = async (data: OrderFormData) => {
 		try {
 			// ===============================
 			// PROCESAR IMAGEN
@@ -103,7 +96,7 @@ export const OrderForm = () => {
 			// ===============================
 			// ENVÍO - URL CORREGIDA
 			// ===============================
-			const API_URL = 'https://api.muebleselromero.cl/wp-json/muebles/v1/order';
+			const API_URL = import.meta.env.VITE_ORDER_API_URL;
 
 			console.log('🔗 URL del endpoint:', API_URL);
 
@@ -120,7 +113,7 @@ export const OrderForm = () => {
 			let responseData;
 			try {
 				responseData = await res.json();
-			} catch (parseError) {
+			} catch {
 				const textResponse = await res.text();
 				console.error('❌ No se pudo parsear JSON. Respuesta:', textResponse);
 				throw new Error('Error en el formato de respuesta del servidor');
@@ -145,6 +138,8 @@ export const OrderForm = () => {
 				},
 			);
 
+			reset();
+
 			// Opcional: Redirigir después de 2 segundos
 			setTimeout(() => {
 				navigate('/catalogo-clasico');
@@ -159,7 +154,17 @@ export const OrderForm = () => {
 				duration: 5000,
 			});
 		}
-	});
+	};
+
+	const {
+		register,
+		handleSubmit,
+		formState,
+		isRateLimited,
+		timeUntilNextSubmit,
+		resetRateLimit,
+		reset,
+	} = useOrderForm(onSubmit);
 
 	if (!product) {
 		return (

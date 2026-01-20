@@ -5,17 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Phone, MapPin, AlertCircle, Clock, Shield } from 'lucide-react';
 import { toast } from 'sonner';
-import { useContactForm } from '@/hooks/useSecureForm';
+import { useContactForm, type ContactFormData } from '@/hooks/useSecureForm';
 
 export const Contact = () => {
-	const {
-		register,
-		handleSubmit,
-		formState,
-		isRateLimited,
-		timeUntilNextSubmit,
-		resetRateLimit,
-	} = useContactForm(async (data) => {
+	const onSubmit = async (data: ContactFormData) => {
 		const response = await fetch(
 			'https://api.muebleselromero.cl/wp-json/contact/v1/send',
 			{
@@ -30,7 +23,7 @@ export const Contact = () => {
 					message: data.message,
 					website: '', // honeypot
 				}),
-			}
+			},
 		);
 
 		const result = await response.json();
@@ -40,7 +33,18 @@ export const Contact = () => {
 		}
 
 		toast.success('¡Mensaje enviado! Nos pondremos en contacto pronto.');
-	});
+		reset();
+	};
+
+	const {
+		register,
+		handleSubmit,
+		formState,
+		isRateLimited,
+		timeUntilNextSubmit,
+		resetRateLimit,
+		reset,
+	} = useContactForm(onSubmit);
 
 	return (
 		<div className='min-h-screen flex flex-col'>
@@ -188,8 +192,8 @@ export const Contact = () => {
 										{formState.isSubmitting
 											? 'Enviando...'
 											: isRateLimited
-											? `Espera ${timeUntilNextSubmit}s`
-											: 'Enviar Mensaje'}
+												? `Espera ${timeUntilNextSubmit}s`
+												: 'Enviar Mensaje'}
 									</Button>
 
 									{/* Información de seguridad */}
