@@ -226,14 +226,12 @@ export function useSecureForm<T extends FieldValues = FieldValues>({
       try {
         // Ejecutar el submit
         await onSubmit(sanitizedData);
-        
+
         // Resetear intentos si el envío fue exitoso
         if (enableRateLimit) {
           submitAttemptsRef.current = [];
           setSubmitAttempts(0);
         }
-
-        toast.success("¡Formulario enviado exitosamente!");
       } catch (error) {
         console.error("Error en el envío del formulario:", error);
         toast.error("Error al enviar el formulario. Intenta de nuevo.");
@@ -366,7 +364,13 @@ export function useContactForm(onSubmit: (data: ContactFormData) => Promise<void
       .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "El nombre solo puede contener letras y espacios"),
     email: z.string()
       .email("Ingresa un email válido")
-      .max(100, "El email no puede exceder 100 caracteres"),
+      .max(100, "El email no puede exceder 100 caracteres")
+      .refine((email) => {
+        const [local, domain] = email.split('@');
+        if (!local || !domain || local.length < 2 || !domain.includes('.')) return false;
+        const [domainName, tld] = domain.split('.');
+        return domainName.length >= 2 && tld.length >= 2;
+      }, "El email debe tener un formato más realista (ej: nombre@dominio.com)"),
     phone: z.string()
       .optional()
       .refine((val) => !val || /^[+]?[1-9][\d]{0,15}$/.test(val.replace(/\s/g, "")),
@@ -406,7 +410,13 @@ export function useOrderForm(onSubmit: (data: OrderFormData) => Promise<void> | 
       .regex(/^[+]?[1-9][\d]{0,15}$/, "Ingresa un teléfono válido"),
     correo: z.string()
       .email("Ingresa un email válido")
-      .max(100, "El email no puede exceder 100 caracteres"),
+      .max(100, "El email no puede exceder 100 caracteres")
+      .refine((email) => {
+        const [local, domain] = email.split('@');
+        if (!local || !domain || local.length < 2 || !domain.includes('.')) return false;
+        const [domainName, tld] = domain.split('.');
+        return domainName.length >= 2 && tld.length >= 2;
+      }, "El email debe tener un formato más realista (ej: nombre@dominio.com)"),
     direccion: z.string()
       .min(5, "La dirección debe tener al menos 5 caracteres")
       .max(100, "La dirección no puede exceder 100 caracteres"),

@@ -119,7 +119,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				'Brave browser detected. KonvaJS may be blocked by Brave shield. Please disable it.',
 			);
 		}
-		console.log('Browser:', navigator.userAgent);
 	}, []);
 
 	const [selectedFurniture, setSelectedFurniture] =
@@ -157,11 +156,9 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 	const loadImage = useCallback(
 		async (url: string): Promise<HTMLImageElement> => {
-			console.log('Loading image:', url);
 			return new Promise((resolve, reject) => {
 				const img = new Image();
 				img.onload = () => {
-					console.log('Image loaded successfully:', url);
 					resolve(img);
 				};
 				img.onerror = (e) => {
@@ -365,12 +362,6 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 			try {
 				onLoadingChange?.(true);
 				onErrorChange?.(null);
-
-				console.log('Loading furniture:', selectedFurniture.name);
-				console.log('Base URL:', selectedFurniture.baseImageUrl);
-				console.log('Mask URL:', selectedFurniture.maskFabricImageUrl);
-				console.log('Wood URL:', selectedFurniture.woodMaskImageUrl);
-				console.log('Table Top URL:', selectedFurniture.tableTopMaskImageUrl);
 
 				const [base, mask, wood, tableTop] = await Promise.all([
 					loadImage(selectedFurniture.baseImageUrl),

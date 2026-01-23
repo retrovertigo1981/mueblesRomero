@@ -35,10 +35,7 @@ export const OrderForm = () => {
 	const navigate = useNavigate();
 	const { product } = (location.state as LocationState) || {};
 
-	console.log('OrderForm rendered, product:', product);
-
 	const onSubmit = async (data: OrderFormData) => {
-		console.log('onSubmit called with data:', data);
 		try {
 			// ===============================
 			// PROCESAR IMAGEN
@@ -89,22 +86,12 @@ export const OrderForm = () => {
 				website: '',
 			};
 
-			console.log('📤 Enviando orden:', {
-				cliente: payload.nombre,
-				producto: payload.product.title,
-				tieneImagen: !!finalImage,
-				esBase64: finalImage.startsWith('data:'),
-			});
-
 			// ===============================
 			// ENVÍO - URL CORREGIDA
 			// ===============================
 			const API_URL =
 				import.meta.env.VITE_ORDER_API_URL ||
 				'https://api.muebleselromero.cl/wp-json/muebles/v1/order';
-
-			console.log('🔗 URL del endpoint:', API_URL);
-			console.log('🔗 VITE_ORDER_API_URL:', import.meta.env.VITE_ORDER_API_URL);
 
 			const res = await fetch(API_URL, {
 				method: 'POST',
@@ -113,8 +100,6 @@ export const OrderForm = () => {
 				},
 				body: JSON.stringify(payload),
 			});
-
-			console.log('📡 Status de respuesta:', res.status, res.statusText);
 
 			let responseData;
 			try {
@@ -133,8 +118,6 @@ export const OrderForm = () => {
 						'Error al enviar la orden',
 				);
 			}
-
-			console.log('✅ Respuesta exitosa:', responseData);
 
 			toast.success(
 				'¡Pedido enviado con éxito! Nos pondremos en contacto contigo pronto.',

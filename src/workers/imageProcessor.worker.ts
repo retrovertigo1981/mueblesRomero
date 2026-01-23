@@ -7,7 +7,6 @@ const processMaskWithPalette = (
 	materialType: 'fabric' | 'wood',
 ): ImageData => {
 	// TEMP: Return original imageData to test if worker works
-	console.log('Processing mask with color:', colorTela.nombre, 'material:', materialType);
 	return imageData;
 };
 

@@ -9,22 +9,19 @@ import { useContactForm, type ContactFormData } from '@/hooks/useSecureForm';
 
 export const Contact = () => {
 	const onSubmit = async (data: ContactFormData) => {
-		const response = await fetch(
-			'https://api.muebleselromero.cl/wp-json/contact/v1/send',
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					name: data.name,
-					email: data.email,
-					phone: data.phone,
-					message: data.message,
-					website: '', // honeypot
-				}),
+		const response = await fetch(import.meta.env.VITE_CONTACT_API, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
 			},
-		);
+			body: JSON.stringify({
+				name: data.name,
+				email: data.email,
+				phone: data.phone,
+				message: data.message,
+				website: data.website, // honeypot
+			}),
+		});
 
 		const result = await response.json();
 

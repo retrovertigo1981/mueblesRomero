@@ -47,10 +47,6 @@ export const optimizeCanvasImage = (
     pixelRatio: scale, // Reduce resolución proporcionalmente
   });
 
-  // 📊 DEBUG: Descomentar para ver tamaño
-  // const sizeInKB = Math.round(dataURL.length / 1024);
-  // console.log(`📊 Imagen optimizada generada: ${sizeInKB} KB`);
-
   return dataURL;
 };
 
