@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/workers/imageProcessor.worker.ts
 import type { Colores } from '@/types/colors';
 
 const processMaskWithPalette = (
 	imageData: ImageData,
-	colorTela: Colores,
-	materialType: 'fabric' | 'wood',
+	_colorTela: Colores,
+	_materialType: 'fabric' | 'wood',
 ): ImageData => {
 	// TEMP: Return original imageData to test if worker works
 	return imageData;

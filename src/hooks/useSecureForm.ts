@@ -55,7 +55,7 @@ export function useSecureForm<T extends FieldValues = FieldValues>({
     cooldownMs: 30000, // 30 segundos
   };
 
-  const finalRateLimitConfig = {
+  const finalRateLimitConfig: RateLimitConfig = {
     ...defaultRateLimitConfig,
     ...rateLimitConfig,
   };

@@ -312,7 +312,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 			return canvas;
 		},
-		[],
+		[], // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	// 📏 SISTEMA DE ESCALADO "COVER"
