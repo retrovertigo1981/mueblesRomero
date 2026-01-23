@@ -18,9 +18,9 @@ export default {
 		},
 
 		fontFamily: {
-			DEFAULT: ['DM Sans', 'sans-serif'],
-			'serif-display': ['DM Serif Display', 'serif'],
-			// 'sans-romero': ['DM Sans', 'sans-serif']
+			DEFAULT: ['"DM Sans"', 'sans-serif'],
+			'serif-display': ['"DM Serif Display"', 'serif'],
+
 		},
 
 		extend: {
