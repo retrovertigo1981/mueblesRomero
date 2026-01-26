@@ -1,6 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { Hero } from '@/components/Hero';
 import { SelectCatalog } from '@/components/SelectCatalog';
+import { FloatingWhatsApp } from 'react-floating-whatsapp';
 
 const Index = () => {
 	return (
@@ -20,6 +21,16 @@ const Index = () => {
 			<div className='min-h-screen'>
 				<Hero />
 				<SelectCatalog />
+				<FloatingWhatsApp
+					phoneNumber='56946378150'
+					accountName='Muebles El Romero'
+					avatar='/muebles_romero_logo-removebg.png'
+					statusMessage='En línea'
+					chatMessage='¡Hola! 👋 ¿En qué podemos ayudarte?'
+					placeholder='Escribe tu mensaje aquí...'
+					darkMode={false}
+					allowClickAway={true}
+				/>
 			</div>
 		</>
 	);
