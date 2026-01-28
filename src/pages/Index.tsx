@@ -22,7 +22,7 @@ const Index = () => {
 				<Hero />
 				<SelectCatalog />
 				<FloatingWhatsApp
-					phoneNumber='56946378150'
+					phoneNumber='56983442725'
 					accountName='Muebles El Romero'
 					avatar='/muebles_romero_logo-removebg.png'
 					statusMessage='En línea'
