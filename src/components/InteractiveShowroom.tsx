@@ -607,7 +607,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				<div className='grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start max-w-7xl mx-auto'>
 					{/* CANVAS - IZQUIERDA */}
 					<div className='order-1 lg:order-1'>
-						<Card className='shadow-soft hover:shadow-hover transition-all duration-300'>
+						<Card className='shadow-soft hover:shadow-hover transition-all duration-300 border-[#5D4037]'>
 							<CardContent className='p-4 sm:p-6'>
 								<div
 									className='relative w-full rounded-lg bg-muted overflow-hidden'
@@ -681,7 +681,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 					{/* CONTROLES - DERECHA */}
 					<div className='order-2 lg:order-2 space-y-6'>
 						{/* SELECTOR DE MUEBLE */}
-						<Card className='shadow-soft'>
+						<Card className='shadow-soft border-[#5D4037]'>
 							<CardHeader className='pb-3'>
 								<CardTitle className='text-lg sm:text-xl flex items-center gap-2'>
 									<Package className='w-5 h-5 text-primary' />
@@ -710,7 +710,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 						{/* SELECTORES DE COLOR */}
 						<div className='grid grid-cols-1 gap-4'>
 							{/* COLOR TELA */}
-							<Card className='shadow-soft'>
+							<Card className='shadow-soft border-[#5D4037]'>
 								<CardHeader className='pb-3'>
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Palette className='w-4 h-4 text-primary' />
@@ -751,16 +751,11 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											))}
 										</SelectContent>
 									</Select>
-									<div className='text-center'>
-										<span className='text-xs text-muted-foreground'>
-											{selectedColor.hex}
-										</span>
-									</div>
 								</CardContent>
 							</Card>
 
 							{/* COLOR MADERA */}
-							<Card className='shadow-soft'>
+							<Card className='shadow-soft border-[#5D4037]'>
 								<CardHeader className='pb-3'>
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Trees className='w-4 h-4 text-primary' />
@@ -801,15 +796,10 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											))}
 										</SelectContent>
 									</Select>
-									<div className='text-center'>
-										<span className='text-xs text-muted-foreground'>
-											{selectedWoodColor.hex}
-										</span>
-									</div>
 								</CardContent>
 							</Card>
 							{/* COLOR SUPERFICIE MESA */}
-							<Card className='shadow-soft'>
+							<Card className='shadow-soft border-[#5D4037]'>
 								<CardHeader className='pb-3'>
 									<CardTitle className='text-base sm:text-lg flex items-center gap-2'>
 										<Trees className='w-4 h-4 text-primary' />
@@ -852,17 +842,12 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 											))}
 										</SelectContent>
 									</Select>
-									<div className='text-center'>
-										<span className='text-xs text-muted-foreground'>
-											{selectedTableTopColor.hex}
-										</span>
-									</div>
 								</CardContent>
 							</Card>
 						</div>
 
 						{/* BOTÓN DE PEDIDO */}
-						<Card className='shadow-soft'>
+						<Card className='shadow-soft border-[#5D4037]'>
 							<CardContent className='pt-6'>
 								<button
 									onClick={handleCreateOrder}

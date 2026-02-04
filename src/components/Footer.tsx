@@ -20,7 +20,7 @@ export const Footer = () => {
 						</div>
 						<p className='text-background/80 max-w-xs'>
 							Transformando espacios con muebles de calidad y diseño excepcional
-							desde 2020.
+							desde 2010.
 						</p>
 					</div>
 
