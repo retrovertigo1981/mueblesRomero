@@ -28,8 +28,8 @@ export const ProductDetail = ({ product }: ProductDetailProps) => {
 	}
 
 	return (
-		<div className='min-h-screen'>
-			<main className='container mx-auto px-4 py-8 mt-10 md:py-12'>
+		<div className='min-h-screen px-36'>
+			<main className='container mx-auto px-4 py-4 mt-10 md:py-12'>
 				<Button
 					variant='outline'
 					onClick={() => navigate('/catalogo-clasico')}

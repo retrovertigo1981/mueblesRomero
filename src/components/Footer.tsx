@@ -1,4 +1,4 @@
-import { Facebook, Instagram } from 'lucide-react';
+import { Facebook, Instagram, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Footer = () => {
@@ -78,6 +78,12 @@ export const Footer = () => {
 							>
 								<Instagram className='w-6 h-6' />
 							</a>
+							<div className='flex gap-1 ml-3'>
+								<span>
+									<Phone />
+								</span>
+								<p>+56 9 8344 2725</p>
+							</div>
 						</div>
 					</div>
 				</div>

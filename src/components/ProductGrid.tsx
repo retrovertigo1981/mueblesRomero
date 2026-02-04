@@ -42,7 +42,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 					loadMore();
 				}
 			},
-			{ threshold: 1.0 }
+			{ threshold: 1.0 },
 		);
 
 		const currentSentinel = sentinelRef.current;
@@ -87,7 +87,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
 					))}
 				</div>
 
-				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
+				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-32'>
 					{displayedProducts.map((product) => (
 						<Card
 							key={product.id}
