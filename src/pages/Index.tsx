@@ -1,6 +1,8 @@
 import { Helmet } from 'react-helmet-async';
 import { Hero } from '@/components/Hero';
+import { Marquesina } from '@/components/Marquesina';
 import { SelectCatalog } from '@/components/SelectCatalog';
+import { MediosPagos } from '@/components/MediosPagos';
 import { FloatingWhatsApp } from 'react-floating-whatsapp';
 
 const Index = () => {
@@ -20,6 +22,8 @@ const Index = () => {
 			</Helmet>
 			<div className='min-h-screen'>
 				<Hero />
+				<Marquesina />
+				<MediosPagos />
 				<SelectCatalog />
 				<FloatingWhatsApp
 					phoneNumber='56983442725'
