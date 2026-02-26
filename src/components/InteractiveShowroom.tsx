@@ -153,6 +153,51 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 	const isMounted = useRef(true);
 	const stageRef = useRef<InstanceType<typeof Konva.Stage> | null>(null);
+	const containerRef = useRef<HTMLDivElement | null>(null);
+
+	// 📱 ESTADO PARA DIMENSIONES RESPONSIVAS DEL CANVAS
+	const [canvasSize, setCanvasSize] = useState({ width: 565, height: 565 });
+	const [scale, setScale] = useState(1);
+	const [isMobile, setIsMobile] = useState(false);
+	const [imageAspect, setImageAspect] = useState(1);
+
+	// 🔄 ACTUALIZAR DIMENSIONES EN RESIZE
+	useEffect(() => {
+		const updateCanvasSize = () => {
+			const mobile = window.innerWidth < 768;
+			setIsMobile(mobile);
+			const baseSize = 565;
+
+			let width: number;
+			let height: number;
+
+			if (mobile) {
+				// px-2 = 8px * 2
+				const padding = 16;
+				const cardPadding = 32; // p-4 = 16px * 2
+				const availableWidth = window.innerWidth - padding - cardPadding;
+				width = availableWidth;
+				height = availableWidth * imageAspect;
+				setScale(1);
+			} else {
+				width = baseSize;
+				height = baseSize;
+				setScale(1);
+			}
+
+			setCanvasSize({ width, height });
+		};
+
+		updateCanvasSize();
+		window.addEventListener('resize', updateCanvasSize);
+		return () => window.removeEventListener('resize', updateCanvasSize);
+	}, [imageAspect]);
+
+	useEffect(() => {
+		if (baseImg) {
+			setImageAspect(baseImg.height / baseImg.width);
+		}
+	}, [baseImg]);
 
 	const loadImage = useCallback(
 		async (url: string): Promise<HTMLImageElement> => {
@@ -312,7 +357,7 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 			return canvas;
 		},
-		[], // eslint-disable-line react-hooks/exhaustive-deps
+		[canvasSize],
 	);
 
 	// 📏 SISTEMA DE ESCALADO "COVER"
@@ -481,22 +526,28 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 		}
 	}, [baseImg, tableTopImg, selectedTableTopColorId, processTableTopMask]);
 
-	// 📱 DIMENSIONES RESPONSIVAS DEL CANVAS
-	const canvasSize =
-		typeof window !== 'undefined' && window.innerWidth < 768
-			? { width: 350, height: 350 }
-			: { width: 565, height: 565 };
-
 	// 🎯 CÁLCULO DE DIMENSIONES DE LAS IMÁGENES
 	const getImageDimensions = useCallback(() => {
 		if (!baseImg) return null;
-		return calculateCoverDimensions(
-			baseImg.width,
-			baseImg.height,
-			canvasSize.width,
-			canvasSize.height,
-		);
-	}, [baseImg, canvasSize.width, canvasSize.height, calculateCoverDimensions]);
+
+		if (isMobile) {
+			return {
+				x: 0,
+				y: 0,
+				width: canvasSize.width,
+				height: canvasSize.height,
+				scaleX: canvasSize.width / baseImg.width,
+				scaleY: canvasSize.height / baseImg.height,
+			};
+		} else {
+			return calculateCoverDimensions(
+				baseImg.width,
+				baseImg.height,
+				canvasSize.width,
+				canvasSize.height,
+			);
+		}
+	}, [baseImg, canvasSize.width, canvasSize.height, isMobile, calculateCoverDimensions]);
 
 	const dimensions = getImageDimensions();
 
@@ -589,9 +640,9 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 
 	return (
 		<div
-			className={`min-h-screen bg-background py-8 sm:py-12 md:py-16 ${className}`}
+			className={`min-h-screen bg-background py-8 sm:py-12 md:py-16 overflow-x-hidden ${className}`}
 		>
-			<div className='container mx-auto px-4 sm:px-6 md:px-8'>
+			<div className='container mx-auto px-2 sm:px-6 md:px-8'>
 				{/* TÍTULO */}
 				<div className='text-center mb-8 sm:mb-10 md:mb-12'>
 					<h2 className='text-3xl sm:text-4xl md:text-5xl font-serif-display font-bold mb-3 text-foreground'>
@@ -604,22 +655,28 @@ export const InteractiveShowroom: React.FC<InteractiveShowroomProps> = ({
 				</div>
 
 				{/* GRID PRINCIPAL */}
-				<div className='grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start max-w-7xl mx-auto'>
+				<div className='grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start max-w-7xl mx-auto overflow-hidden'>
 					{/* CANVAS - IZQUIERDA */}
 					<div className='order-1 lg:order-1'>
 						<Card className='shadow-soft hover:shadow-hover transition-all duration-300 border-[#5D4037]'>
 							<CardContent className='p-4 sm:p-6'>
 								<div
-									className='relative w-full rounded-lg bg-muted overflow-hidden'
+									ref={containerRef}
+									className='relative w-full rounded-lg bg-muted overflow-hidden mx-auto'
 									style={{
-										aspectRatio: `${canvasSize.width} / ${canvasSize.height}`,
+										maxWidth: isMobile ? 'unset' : `${canvasSize.width}px`,
+										aspectRatio: isMobile
+											? `${baseImg?.width ?? 1} / ${baseImg?.height ?? 1}`
+											: '1 / 1',
 									}}
 								>
 									<Stage
 										ref={stageRef}
 										width={canvasSize.width}
 										height={canvasSize.height}
-										className='w-full h-full'
+										scaleX={scale}
+										scaleY={scale}
+										style={{ width: '100%', height: '100%' }}
 									>
 										<Layer>
 											{/* Imagen Base */}

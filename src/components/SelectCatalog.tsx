@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import heroClasico from '@/assets/catalogo_tradicional_hero.png';
-import heroInteractivo from '@/assets/product-desk.jpg';
+import heroClasico from '@/assets/portada_catalogo_clasico.webp';
+import heroInteractivo from '@/assets/portada_catalogo_interactivo.webp';
 import { useNavigate } from 'react-router-dom';
 
 export const SelectCatalog = () => {

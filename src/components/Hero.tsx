@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Phone } from 'lucide-react';
-import heroImage from '@/assets/hero-furniture.jpg';
+import heroImage from '@/assets/hero-furniture.webp';
 import { useNavigate } from 'react-router-dom';
 
 export const Hero = () => {
