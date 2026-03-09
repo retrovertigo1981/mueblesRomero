@@ -6,6 +6,24 @@
 All colors MUST be HSL.
 */
 
+/* Fuentes */
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('src/assets/fonts/dm-sans.woff2') format('woff2')
+}
+
+@font-face {
+  font-family: 'DM Serif Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('src/assets/fonts/dm-serif-display.woff2') format('woff2');
+}
+
 @layer base {
   :root {
     /* Furniture store color palette - warm, earthy, modern */

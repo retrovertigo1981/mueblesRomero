@@ -17,13 +17,14 @@ export default {
 			}
 		},
 
-		fontFamily: {
-			DEFAULT: ['"DM Sans"', 'sans-serif'],
-			'serif-display': ['"DM Serif Display"', 'serif'],
 
-		},
 
 		extend: {
+			fontFamily: {
+				DEFAULT: ['"DM Sans"', 'sans-serif'],
+				'serif-display': ['"DM Serif Display"', 'serif'],
+
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
