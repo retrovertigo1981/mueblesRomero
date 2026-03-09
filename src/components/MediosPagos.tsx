@@ -4,13 +4,14 @@ export const MediosPagos = () => {
     return (
 
 
-        <div className='container mx-auto max-w-7xl mt-16'>
-            <div className='flex flex-col items-center'>
-                <h3 className="text-xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-10 text-foreground font-serif-display text-center">
+        <div className='container mx-auto max-w-7xl p-8'>
+            <div className='flex justify-center items-center gap-8'>
+
+                <h3 className="text-[12px] sm:text-lg md:text-2xl font-bold mb-6 sm:mb-10 text-foreground font-serif-display text-center">
                     Aceptamos diferentes medios de pago
                 </h3>
                 <img
-                    className='w-[500px]'
+                    className='w-[100px] sm:w-[200px]'
                     src={mediosPagos}
                     alt="Medios de pago"
                 />

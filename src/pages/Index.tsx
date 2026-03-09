@@ -3,7 +3,19 @@ import { Hero } from '@/components/Hero';
 import { Marquesina } from '@/components/Marquesina';
 import { SelectCatalog } from '@/components/SelectCatalog';
 import { MediosPagos } from '@/components/MediosPagos';
+import { CarruselFotos } from '@/components/CarruselFotos'
 import { FloatingWhatsApp } from 'react-floating-whatsapp';
+import mueble1 from '@/assets/carrusel_01.webp'
+import mueble2 from '@/assets/carrusel_02.webp'
+import mueble3 from '@/assets/carrusel_03.webp'
+import mueble4 from '@/assets/carrusel_04.webp'
+
+const images = [
+	{ src: mueble1, alt: 'Comedor de Madera' },
+	{ src: mueble2, alt: 'Comedor de Madera' },
+	{ src: mueble3, alt: 'Comedor de Madera' },
+	{ src: mueble4, alt: 'Comedor de Madera' }
+]
 
 const Index = () => {
 	return (
@@ -21,9 +33,10 @@ const Index = () => {
 				<link rel='canonical' href='https://muebleselromero.cl/' />
 			</Helmet>
 			<div className='min-h-screen'>
-				<Hero />
 				<Marquesina />
 				<MediosPagos />
+				<Hero />
+				<CarruselFotos images={images} />
 				<SelectCatalog />
 				<FloatingWhatsApp
 					phoneNumber='56983442725'
