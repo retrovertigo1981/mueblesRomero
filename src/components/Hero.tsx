@@ -13,7 +13,7 @@ export const Hero = () => {
 	const navigate = useNavigate();
 
 	return (
-		<section className='relative h-screen sm:h-auto sm:pt-28 sm:pb-24 md:pt-36 md:pb-32 lg:pt-56 lg:pb-56 px-4 overflow-hidden'>
+		<section className='relative h-[520px] sm:h-auto sm:pt-28 sm:pb-24 md:pt-36 md:pb-32 lg:pt-56 lg:pb-56 px-4 overflow-hidden'>
 			{/* Background Image with Overlay */}
 			<div className='absolute inset-0 z-0'>
 				<img

@@ -13,7 +13,7 @@ All colors MUST be HSL.
   font-style: normal;
   font-weight: 100 1000;
   font-display: swap;
-  src: url('src/assets/fonts/dm-sans.woff2') format('woff2')
+  src: url('./assets/fonts/dm-sans.woff2') format('woff2')
 }
 
 @font-face {
@@ -21,7 +21,7 @@ All colors MUST be HSL.
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('src/assets/fonts/dm-serif-display.woff2') format('woff2');
+  src: url('./assets/fonts/dm-serif-display.woff2') format('woff2');
 }
 
 @layer base {
