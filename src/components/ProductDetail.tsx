@@ -111,18 +111,6 @@ export const ProductDetail = ({ product }: ProductDetailProps) => {
 									<Separator />
 
 									<div className='flex items-start gap-3'>
-										<div className='h-5 w-5 rounded-full border-2 border-primary mt-0.5' />
-										<div>
-											<p className='font-medium text-foreground'>Color</p>
-											<p className='text-sm text-muted-foreground'>
-												{product.color}
-											</p>
-										</div>
-									</div>
-
-									<Separator />
-
-									<div className='flex items-start gap-3'>
 										<Shield className='h-5 w-5 text-primary mt-0.5' />
 										<div>
 											<p className='font-medium text-foreground'>Garantía</p>
